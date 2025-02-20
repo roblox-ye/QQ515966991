@@ -1,0 +1,25 @@
+if game.PlaceId == 4618049391 then
+loadstring(game:HttpGet("https://raw.githubusercontent.com/roblox-ye/QQ515966991/refs/heads/main/YE%20SCRIPT-Tang%20County%2C%20Hebei.lua"))()
+elseif game.PlaceId ==  138837502355157 then
+ loadstring(game:HttpGet("https://raw.githubusercontent.com/roblox-ye/QQ515966991/refs/heads/main/ROBLOX-YESCRIPT-GRACE.lua"))()      
+elseif game.PlaceId == 110333320616502 then
+ loadstring(game:HttpGet("https://raw.githubusercontent.com/roblox-ye/QQ515966991/refs/heads/main/ROBLOX-YESCRIPT-GRACE.lua"))()      
+elseif game.PlaceId == 18687417158 then
+loadstring(game:HttpGet("https://raw.githubusercontent.com/roblox-ye/QQ515966991/refs/heads/main/ROBLOX-YESCRIPT-Abandoned.lua"))()
+elseif game.PlaceId == 654732683 then
+loadstring(game:HttpGet("https://raw.githubusercontent.com/roblox-ye/QQ515966991/refs/heads/main/ROBLOX-YESCRIPT-Automobile%20Destroyer.lua"))()
+elseif game.PlaceId == 1345139196 then
+ loadstring(game:HttpGet("https://raw.githubusercontent.com/roblox-ye/QQ515966991/refs/heads/main/ROBLOX-YESCRIPT-Treasure%20Hunting%20Simulator.lua"))()      
+elseif game.PlaceId == 192800 then
+ loadstring(game:HttpGet("https://raw.githubusercontent.com/roblox-ye/QQ515966991/refs/heads/main/ROBLOX-YESCRIPT-Worked%20at%20a%20pizza%20place.lua"))()      
+elseif game.PlaceId == 891852901 then
+ loadstring(game:HttpGet("https://raw.githubusercontent.com/roblox-ye/QQ515966991/refs/heads/main/ROBLOX-YESCRIPT-Rocket%20Launch%20Simulator.lua"))()      
+elseif game.PlaceId == 3101667897 then
+ loadstring(game:HttpGet("https://raw.githubusercontent.com/roblox-ye/QQ515966991/refs/heads/main/ROBLOX-YESCRIPT-Speed%20Legend.lua"))()      
+elseif game.PlaceId == 3623096087 then
+ loadstring(game:HttpGet("https://raw.githubusercontent.com/roblox-ye/QQ515966991/refs/heads/main/ROBLOX-YESCRIPT-Legend%20of%20Power.lua"))()      
+elseif game.PlaceId == 5256165620 then
+ loadstring(game:HttpGet("https://raw.githubusercontent.com/roblox-ye/QQ515966991/refs/heads/main/ROBLOX-YESCRIPT-GREEN.lua"))()      
+else
+loadstring(game:HttpGet("https://raw.githubusercontent.com/roblox-ye/QQ515966991/refs/heads/main/XIAOYE1145666.LUA"))()
+end
