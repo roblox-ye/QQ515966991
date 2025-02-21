@@ -18,7 +18,7 @@ local WhitelistedPlayers = {
     ["CN_MQL"] = true,
     ["A8njyu"] = true,
     ["beirtuote"] = true,
-    [""] = true,
+    ["jiuci5207"] = true,
     
 }
 
