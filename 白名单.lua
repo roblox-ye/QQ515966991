@@ -21,9 +21,9 @@ local WhitelistedPlayers = {
     ["jiuci5207"] = true,
     ["cn_xiaofengfeng"] = true,
     ["Amuterwd"] = true,
-    [""] = true,
-    [""] = true,
-    [""] = true,
+    ["pibc5398"] = true,
+    ["0v0pn4"] = true,
+    ["china999686"] = true,
     [""] = true,
     [""] = true,
 }
