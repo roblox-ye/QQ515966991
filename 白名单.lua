@@ -19,7 +19,13 @@ local WhitelistedPlayers = {
     ["A8njyu"] = true,
     ["beirtuote"] = true,
     ["jiuci5207"] = true,
-    
+    ["cn_xiaofengfeng"] = true,
+    [""] = true,
+    [""] = true,
+    [""] = true,
+    [""] = true,
+    [""] = true,
+    [""] = true,
 }
 
 local function IsWhitelisted(player)
