@@ -9,7 +9,7 @@ CoreGui:SetCore("SendNotification", {
 local StarterGui = game:GetService("StarterGui")
 local Players = game:GetService("Players")
 local WhitelistedPlayers = {
-    ["DFTRQ24"] = true,
+    ["fys6666661"] = true,
     ["gffddaweyjvxssssf"] = true,
     ["mike_10554"] = true,
     ["shrjfjwkwkf"] = true,
