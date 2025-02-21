@@ -24,7 +24,7 @@ local WhitelistedPlayers = {
     ["pibc5398"] = true,
     ["0v0pn4"] = true,
     ["china999686"] = true,
-    [""] = true,
+    ["A888888L6"] = true,
     [""] = true,
 }
 
