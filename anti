@@ -1,0 +1,31 @@
+local shit=function()pcall(function()game.Players.LocalPlayer:Kick()end)pcall(game.Shutdown,game)end
+
+local fuck=function()return"a"end
+hookfunction(fuck,function()return"b"end)
+if not isfunctionhooked then shit()return end
+if not isfunctionhooked(fuck)then shit()return end
+
+local bitch=game.HttpGet
+hookfunction(bitch,function()end)
+if not isfunctionhooked(bitch)then shit()return end
+restorefunction(bitch)
+if isfunctionhooked(bitch)then shit()return end
+
+local cunt=request or http_request or(syn and syn.request)or(fluxus and fluxus.request)
+
+spawn(function()
+    while task.wait(0.5)do
+        pcall(function()
+            if isfunctionhooked(game.HttpGet)then shit()end
+            if isfunctionhooked(game.HttpPost)then shit()end
+            if isfunctionhooked(tostring)then shit()end
+            if isfunctionhooked(setclipboard)then shit()end
+            if cunt and isfunctionhooked(cunt)then shit()end
+            if isfolder("HttpGetFolder")or isfolder("WebhookFolder")or isfolder("RequestFolder")then shit()end
+        end)
+    end
+end)
+
+for _,dick in pairs({"rconsoleprint","rconsolewarn","rconsoleinfo","rconsoleerr","rconsoletitle","clonefunction"})do
+    getgenv()[dick]=nil
+end
