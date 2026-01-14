@@ -1,34 +1,3 @@
-
--- Convert by team secret 
--- Function Key Work Someone!
---Version Fixed v2.2
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
---//====================================================\\--
---||                       BASIS
---\\====================================================//--
-
 local script_Model = game:GetObjects("rbxassetid://7473216460")[1]
 local script = script_Model:WaitForChild("Roadrogue")
 local MODULE = script
