@@ -2,7 +2,7 @@ repeat
     task.wait()
 until game:IsLoaded()
 local library = {}
-local ToggleUI = true
+local ToggleUI = false
 library.currentTab = nil
 library.flags = {}
 
@@ -210,7 +210,7 @@ end
     CloudMain.ZIndex = 1
     CloudMain.Transparency = 0.800
     CloudMain.BackgroundTransparency = 1
-    CloudMain.Visible = true
+    CloudMain.Visible = false
     CloudMain.Active = true
     CloudMain.Draggable = true   
     drag(CloudMain)
