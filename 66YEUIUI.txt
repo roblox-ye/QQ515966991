@@ -3,71 +3,101 @@ repeat
 until game:IsLoaded()
 
 local TargetUsername = "chinawerui"
+local RunService = game:GetService("RunService")
 
 local function CreateAdminTag()
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "YeAdminTag"
-    billboard.Size = UDim2.new(0, 160, 0, 40)
-    billboard.StudsOffset = Vector3.new(0, 3, 0)
+    billboard.Size = UDim2.new(0, 135, 0, 30)
+    billboard.StudsOffset = Vector3.new(0, 2.8, 0)
     billboard.AlwaysOnTop = true 
+
+    local MainFrame = Instance.new("Frame")
+    MainFrame.Name = "MainFrame"
+    MainFrame.Parent = billboard
+    MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+    MainFrame.BackgroundTransparency = 0.4
+    MainFrame.Size = UDim2.new(1, 0, 1, 0)
+
+    local FrameCorner = Instance.new("UICorner")
+    FrameCorner.CornerRadius = UDim.new(0, 6) 
+    FrameCorner.Parent = MainFrame
+
+    local FrameStroke = Instance.new("UIStroke")
+    FrameStroke.Name = "RainbowStroke"
+    FrameStroke.Parent = MainFrame
+    FrameStroke.Thickness = 2
+    FrameStroke.Color = Color3.fromRGB(255, 0, 0)
+    FrameStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    FrameStroke.LineJoinMode = Enum.LineJoinMode.Round
+
+    local ListLayout = Instance.new("UIListLayout")
+    ListLayout.Parent = MainFrame
+    ListLayout.FillDirection = Enum.FillDirection.Horizontal
+    ListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    ListLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+    ListLayout.Padding = UDim.new(0, 6)
+
+    local CrownIcon = Instance.new("ImageLabel")
+    CrownIcon.Name = "CrownIcon"
+    CrownIcon.Parent = MainFrame
+    CrownIcon.BackgroundTransparency = 1
+    CrownIcon.Size = UDim2.new(0, 18, 0, 18)
+    CrownIcon.Image = "rbxassetid://3926305904"
+    CrownIcon.ImageRectOffset = Vector2.new(124, 84)
+    CrownIcon.ImageRectSize = Vector2.new(36, 36)
+
+    local CrownGradient = Instance.new("UIGradient")
+    CrownGradient.Parent = CrownIcon
 
     local TagLabel = Instance.new("TextLabel") 
     TagLabel.Name = "AdminLabel"
-    TagLabel.Parent = billboard
-    TagLabel.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
-    TagLabel.BackgroundTransparency = 0.5
-    TagLabel.Size = UDim2.new(1, 0, 1, 0) 
+    TagLabel.Parent = MainFrame
+    TagLabel.BackgroundTransparency = 1
+    TagLabel.Size = UDim2.new(0, 85, 0, 30) 
     TagLabel.Font = Enum.Font.GothamBold
     TagLabel.Text = "叶脚本管理" 
     TagLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    TagLabel.TextSize = 18.000
+    TagLabel.TextSize = 15.000 
     TagLabel.TextWrapped = true
 
-    local TagCorner = Instance.new("UICorner")
-    TagCorner.CornerRadius = UDim.new(0, 8) 
-    TagCorner.Parent = TagLabel
-
-    -- 边框彩虹动画
-    local TagStroke = Instance.new("UIStroke")
-    TagStroke.Name = "RainbowStroke"
-    TagStroke.Parent = TagLabel
-    TagStroke.Thickness = 3
-    TagStroke.Color = Color3.fromRGB(255, 0, 0)
-    TagStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-    TagStroke.LineJoinMode = Enum.LineJoinMode.Round
-
-    task.spawn(function()
-        while TagLabel.Parent do
-            for i = 0, 1, 0.01 do
-                if not TagLabel.Parent then break end
-                local hue = i * 360
-                TagStroke.Color = Color3.fromHSV(hue/360, 1, 1)
-                task.wait(0.05)
-            end
-        end
-    end)
-
     local TextGradient = Instance.new("UIGradient")
-    TextGradient.Name = "TextRainbowGradient"
-    TextGradient.Color = ColorSequence.new{
-        ColorSequenceKeypoint.new(0.00, Color3.fromRGB(255, 0, 0)),
-        ColorSequenceKeypoint.new(0.10, Color3.fromRGB(255, 127, 0)),
-        ColorSequenceKeypoint.new(0.20, Color3.fromRGB(255, 255, 0)),
-        ColorSequenceKeypoint.new(0.30, Color3.fromRGB(0, 255, 0)),
-        ColorSequenceKeypoint.new(0.40, Color3.fromRGB(0, 255, 255)),
-        ColorSequenceKeypoint.new(0.50, Color3.fromRGB(0, 0, 255)),
-        ColorSequenceKeypoint.new(0.60, Color3.fromRGB(139, 0, 255)),
-        ColorSequenceKeypoint.new(0.70, Color3.fromRGB(255, 0, 0)),
-        ColorSequenceKeypoint.new(0.80, Color3.fromRGB(255, 127, 0)),
-        ColorSequenceKeypoint.new(0.90, Color3.fromRGB(255, 255, 0)),
-        ColorSequenceKeypoint.new(1.00, Color3.fromRGB(0, 255, 0))
-    }
     TextGradient.Parent = TagLabel
 
-    local TweenService = game:GetService("TweenService")
-    local tweenInfo = TweenInfo.new(7, Enum.EasingStyle.Linear, Enum.EasingDirection.In, -1)
-    local tween = TweenService:Create(TextGradient, tweenInfo, {Rotation = 360})
-    tween:Play()
+    local rainbowColorSequence = ColorSequence.new{
+        ColorSequenceKeypoint.new(0.00, Color3.fromRGB(255, 0, 0)),
+        ColorSequenceKeypoint.new(0.15, Color3.fromRGB(255, 127, 0)),
+        ColorSequenceKeypoint.new(0.30, Color3.fromRGB(255, 255, 0)),
+        ColorSequenceKeypoint.new(0.45, Color3.fromRGB(0, 255, 0)),
+        ColorSequenceKeypoint.new(0.60, Color3.fromRGB(0, 255, 255)),
+        ColorSequenceKeypoint.new(0.75, Color3.fromRGB(0, 0, 255)),
+        ColorSequenceKeypoint.new(0.90, Color3.fromRGB(139, 0, 255)),
+        ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255, 0, 0))
+    }
+    TextGradient.Color = rainbowColorSequence
+    CrownGradient.Color = rainbowColorSequence
+
+    task.spawn(function()
+        local TweenService = game:GetService("TweenService")
+        local tweenInfo = TweenInfo.new(5, Enum.EasingStyle.Linear, Enum.EasingDirection.In, -1)
+        
+        TweenService:Create(TextGradient, tweenInfo, {Rotation = 360}):Play()
+        TweenService:Create(CrownGradient, tweenInfo, {Rotation = 360}):Play()
+
+        local startTime = tick()
+        while MainFrame.Parent do
+            if not MainFrame.Parent then break end
+            local currentTime = tick()
+            
+            local hue = (currentTime % 5) / 5
+            FrameStroke.Color = Color3.fromHSV(hue, 1, 1)
+            
+            local floatOffset = math.sin(currentTime * 3) * 0.3
+            billboard.StudsOffset = Vector3.new(0, 2.8 + floatOffset, 0)
+
+            task.wait()
+        end
+    end)
     
     return billboard
 end
@@ -78,13 +108,25 @@ local function AttachToTarget()
         local function OnCharacterAdded(character)
             local head = character:WaitForChild("Head", 5)
             if head then
+                local coreGui = game:GetService("CoreGui")
+                local playerGui = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
+                
+                pcall(function()
+                    if coreGui:FindFirstChild("YeAdminTag") then
+                        coreGui.YeAdminTag:Destroy()
+                    end
+                    if playerGui:FindFirstChild("YeAdminTag") then
+                        playerGui.YeAdminTag:Destroy()
+                    end
+                end)
+
                 local billboard = CreateAdminTag()
                 billboard.Adornee = head
                 local success = pcall(function()
-                    billboard.Parent = game:GetService("CoreGui")
+                    billboard.Parent = coreGui
                 end)
                 if not success then
-                    billboard.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
+                    billboard.Parent = playerGui
                 end
             end
         end
