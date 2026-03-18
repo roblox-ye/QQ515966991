@@ -1,6 +1,108 @@
 repeat
     task.wait()
 until game:IsLoaded()
+
+local TargetUsername = "chinawerui"
+
+local function CreateAdminTag()
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "YeAdminTag"
+    billboard.Size = UDim2.new(0, 160, 0, 40)
+    billboard.StudsOffset = Vector3.new(0, 3, 0)
+    billboard.AlwaysOnTop = true 
+
+    local TagLabel = Instance.new("TextLabel") 
+    TagLabel.Name = "AdminLabel"
+    TagLabel.Parent = billboard
+    TagLabel.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+    TagLabel.BackgroundTransparency = 0.5
+    TagLabel.Size = UDim2.new(1, 0, 1, 0) 
+    TagLabel.Font = Enum.Font.GothamBold
+    TagLabel.Text = "叶脚本管理" 
+    TagLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    TagLabel.TextSize = 18.000
+    TagLabel.TextWrapped = true
+
+    local TagCorner = Instance.new("UICorner")
+    TagCorner.CornerRadius = UDim.new(0, 8) 
+    TagCorner.Parent = TagLabel
+
+    -- 边框彩虹动画
+    local TagStroke = Instance.new("UIStroke")
+    TagStroke.Name = "RainbowStroke"
+    TagStroke.Parent = TagLabel
+    TagStroke.Thickness = 3
+    TagStroke.Color = Color3.fromRGB(255, 0, 0)
+    TagStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    TagStroke.LineJoinMode = Enum.LineJoinMode.Round
+
+    task.spawn(function()
+        while TagLabel.Parent do
+            for i = 0, 1, 0.01 do
+                if not TagLabel.Parent then break end
+                local hue = i * 360
+                TagStroke.Color = Color3.fromHSV(hue/360, 1, 1)
+                task.wait(0.05)
+            end
+        end
+    end)
+
+    local TextGradient = Instance.new("UIGradient")
+    TextGradient.Name = "TextRainbowGradient"
+    TextGradient.Color = ColorSequence.new{
+        ColorSequenceKeypoint.new(0.00, Color3.fromRGB(255, 0, 0)),
+        ColorSequenceKeypoint.new(0.10, Color3.fromRGB(255, 127, 0)),
+        ColorSequenceKeypoint.new(0.20, Color3.fromRGB(255, 255, 0)),
+        ColorSequenceKeypoint.new(0.30, Color3.fromRGB(0, 255, 0)),
+        ColorSequenceKeypoint.new(0.40, Color3.fromRGB(0, 255, 255)),
+        ColorSequenceKeypoint.new(0.50, Color3.fromRGB(0, 0, 255)),
+        ColorSequenceKeypoint.new(0.60, Color3.fromRGB(139, 0, 255)),
+        ColorSequenceKeypoint.new(0.70, Color3.fromRGB(255, 0, 0)),
+        ColorSequenceKeypoint.new(0.80, Color3.fromRGB(255, 127, 0)),
+        ColorSequenceKeypoint.new(0.90, Color3.fromRGB(255, 255, 0)),
+        ColorSequenceKeypoint.new(1.00, Color3.fromRGB(0, 255, 0))
+    }
+    TextGradient.Parent = TagLabel
+
+    local TweenService = game:GetService("TweenService")
+    local tweenInfo = TweenInfo.new(7, Enum.EasingStyle.Linear, Enum.EasingDirection.In, -1)
+    local tween = TweenService:Create(TextGradient, tweenInfo, {Rotation = 360})
+    tween:Play()
+    
+    return billboard
+end
+
+local function AttachToTarget()
+    local targetPlayer = game:GetService("Players"):FindFirstChild(TargetUsername)
+    if targetPlayer then
+        local function OnCharacterAdded(character)
+            local head = character:WaitForChild("Head", 5)
+            if head then
+                local billboard = CreateAdminTag()
+                billboard.Adornee = head
+                local success = pcall(function()
+                    billboard.Parent = game:GetService("CoreGui")
+                end)
+                if not success then
+                    billboard.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
+                end
+            end
+        end
+
+        if targetPlayer.Character then
+            OnCharacterAdded(targetPlayer.Character)
+        end
+        targetPlayer.CharacterAdded:Connect(OnCharacterAdded)
+    end
+end
+
+game:GetService("Players").PlayerAdded:Connect(function(player)
+    if player.Name == TargetUsername then
+        AttachToTarget()
+    end
+end)
+AttachToTarget()
+
 local library = {}
 local ToggleUI = true
 library.currentTab = nil
@@ -266,62 +368,56 @@ drag(CloudMain)
     tween:Play()
 
 function toggleui()
-    local targetScale = 0.85 -- 缩放比例微调，略微增大，动画更明显
+    local targetScale = 0.85 
     local baseWidth = 572
     local baseHeight = 353
-    
-    -- 定义动画时长和缓动样式
-    local animationDuration = 0.35 -- 略微延长，更显从容
-    local easeStyle = Enum.EasingStyle.Quad -- 改为Quad，运动曲线更平滑
+    local animationDuration = 0.35 
+    local easeStyle = Enum.EasingStyle.Quad 
     local easeDirectionOut = Enum.EasingDirection.Out
     local easeDirectionIn = Enum.EasingDirection.In
     
-    if not toggled then
-        -- 【优化后的打开动画】
-        toggled = true
-        
-        -- 1. 初始状态：缩小且完全透明
+    -- 【核心修复】直接读取 UI 的真实状态，彻底抛弃容易出错的 toggled 变量！
+    -- 如果界面不可见，或者透明度大于等于 0.9，说明它是关闭的
+    local isClosed = (not CloudMain.Visible) or (CloudMain.BackgroundTransparency >= 0.9)
+    
+    if isClosed then
+        -- 当前是关闭的，执行【打开动画】
         CloudMain.Size = UDim2.new(0, baseWidth * targetScale, 0, baseHeight * targetScale)
-        CloudMain.BackgroundTransparency = 1 -- 完全透明
-        CloudMain.Visible = true -- 设为可见但透明
+        CloudMain.BackgroundTransparency = 1 
+        CloudMain.Visible = true 
         
-        -- 2. 创建并播放组合动画：同时放大和淡入
-        local openTween = services.TweenService:Create(
+        local openTween = game:GetService("TweenService"):Create(
             CloudMain,
             TweenInfo.new(animationDuration, easeStyle, easeDirectionOut),
             {
                 Size = UDim2.new(0, baseWidth, 0, baseHeight),
-                BackgroundTransparency = 0.8 -- 淡入到目标透明度
+                BackgroundTransparency = 0.8 
             }
         )
         openTween:Play()
-        
     else
-        -- 【优化后的关闭动画】
-        toggled = false
-        
-        -- 1. 创建组合动画：同时缩小和淡出
-        local closeTween = services.TweenService:Create(
+        -- 当前是打开的，执行【关闭动画】
+        local closeTween = game:GetService("TweenService"):Create(
             CloudMain,
             TweenInfo.new(animationDuration, easeStyle, easeDirectionIn),
             {
                 Size = UDim2.new(0, baseWidth * targetScale, 0, baseHeight * targetScale),
-                BackgroundTransparency = 1 -- 淡出到完全透明
+                BackgroundTransparency = 1 
             }
         )
         closeTween:Play()
         
-        -- 2. 动画完成后，不仅隐藏，也确保透明度状态被正确重置（以备下次打开）
-        closeTween.Completed:Connect(function()
-            if not toggled then -- 再次确认是否需要隐藏
-                CloudMain.Visible = false
-                -- 可选：重置为初始透明度，确保下次打开动画的初始状态一致
-                -- CloudMain.BackgroundTransparency = 1
+        closeTween.Completed:Connect(function(playbackState)
+            -- 检查动画是否正常播放完毕
+            if playbackState == Enum.PlaybackState.Completed then
+                -- 确保完全变透明了才隐藏，防止玩家狂点导致卡 Bug
+                if CloudMain.BackgroundTransparency >= 0.9 then
+                    CloudMain.Visible = false
+                end
             end
         end)
     end
 end
-
 
 
     TabMain.Name = "TabMain"
