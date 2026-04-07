@@ -102,7 +102,7 @@ local function CreateAdminTag()
     return billboard
 end
 
-local function AttachToTarget()    
+local function AttachToTarget()  
     if game:GetService("Players").LocalPlayer.Name == TargetUsername then
         return 
     end
@@ -693,23 +693,19 @@ OpenStroke.Color = Color3.fromRGB(255, 0, 0)
 OpenStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 OpenStroke.LineJoinMode = Enum.LineJoinMode.Round
 
+-- 边框彩虹颜色动画（保持不变）
 spawn(function()
     while Open.Parent do
-        if library.flags["RainbowToggle"] then
-            for i = 0, 1, 0.01 do
-                if not Open.Parent or not library.flags["RainbowToggle"] then break end
-                
-                local hue = i * 360
-                OpenStroke.Color = Color3.fromHSV(hue/360, 1, 1)
-                task.wait(0.05)
-            end
-        else
-            task.wait(0.5)
+        for i = 0, 1, 0.01 do
+            if not Open.Parent then break end
+            local hue = i * 360
+            OpenStroke.Color = Color3.fromHSV(hue/360, 1, 1)
+            wait(0.05)
         end
     end
 end)
 
-
+-- 为文字添加彩虹渐变动画（使用您提供的代码）
 local TextGradient = Instance.new("UIGradient")
 TextGradient.Name = "TextRainbowGradient"
 TextGradient.Color = ColorSequence.new{
@@ -750,18 +746,14 @@ MainStroke.Color = Color3.fromRGB(255, 0, 0)
 MainStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 MainStroke.LineJoinMode = Enum.LineJoinMode.Round
 
+-- 主边框彩虹颜色动画（保持不变）
 spawn(function()
     while CloudMain.Parent do
-        if library.flags["RainbowToggle"] and CloudMain.Visible then
-            for i = 0, 1, 0.01 do  
-                if not CloudMain.Parent or not library.flags["RainbowToggle"] then break end
-                
-                local hue = (i * 360 + 180) % 360
-                MainStroke.Color = Color3.fromHSV(hue/360, 1, 1)
-                task.wait(0.05)
-            end
-        else
-            task.wait(0.5) 
+        for i = 0, 1, 0.01 do
+            if not CloudMain.Parent then break end
+            local hue = (i * 360 + 180) % 360  -- 与按钮颜色相差180度
+            MainStroke.Color = Color3.fromHSV(hue/360, 1, 1)
+            wait(0.05)
         end
     end
 end)
