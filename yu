@@ -542,7 +542,7 @@ function library.new(library, name, theme)
             SectionText.BackgroundTransparency = 1.000
             SectionText.Position = UDim2.new(0.0887396261, 0, 0, 0)
             SectionText.Size = UDim2.new(0, 401, 0, 36)
-            SectionText.Font = Enum.Font.GothamSemibold
+            SectionText.Font = Enum.Font.GothamBold
             SectionText.Text = name
             SectionText.TextColor3 = TextColor
             SectionText.TextSize = 16.000
@@ -554,7 +554,7 @@ function library.new(library, name, theme)
             SectionOpen.BorderSizePixel = 0
             SectionOpen.Position = UDim2.new(0, -25, 0, 5)
             SectionOpen.Size = UDim2.new(0, 26, 0, 26)
-            SectionOpen.Font = Enum.Font.Gotham
+            SectionOpen.Font = Enum.Font.GothamBold
             SectionOpen.Text = "+"
             SectionOpen.TextColor3 = TextColor
             SectionOpen.TextSize = 20.000
@@ -564,7 +564,7 @@ function library.new(library, name, theme)
             SectionOpened.BackgroundTransparency = 1.000
             SectionOpened.BorderSizePixel = 0
             SectionOpened.Size = UDim2.new(0, 26, 0, 26)
-            SectionOpened.Font = Enum.Font.Gotham
+            SectionOpened.Font = Enum.Font.GothamBold
             SectionOpened.Text = "-"
             SectionOpened.TextColor3 = TextColor
             SectionOpened.TextSize = 20.000
@@ -634,7 +634,7 @@ function library.new(library, name, theme)
                 Btn.BorderSizePixel = 0
                 Btn.Size = UDim2.new(0, 428, 0, 38)
                 Btn.AutoButtonColor = false
-                Btn.Font = Enum.Font.GothamSemibold
+                Btn.Font = Enum.Font.GothamBold
                 Btn.Text = "   " .. text
                 Btn.TextColor3 = TextColor
                 Btn.TextSize = 16.000
@@ -679,7 +679,7 @@ function library.new(library, name, theme)
                 TextLabel.Transparency = interfaceTransparency
                 TextLabel.BackgroundColor3 = zyColor
                 TextLabel.Size = UDim2.new(0, 428, 0, 22)
-                TextLabel.Font = Enum.Font.GothamSemibold
+                TextLabel.Font = Enum.Font.GothamBold
                 TextLabel.Text = text
                 TextLabel.TextColor3 = TextColor
                 TextLabel.TextSize = 14.000
@@ -722,7 +722,7 @@ function library.new(library, name, theme)
                 ToggleBtn.BorderSizePixel = 0
                 ToggleBtn.Size = UDim2.new(0, 428, 0, 38)
                 ToggleBtn.AutoButtonColor = false
-                ToggleBtn.Font = Enum.Font.GothamSemibold
+                ToggleBtn.Font = Enum.Font.GothamBold
                 ToggleBtn.Text = "   " .. text
                 ToggleBtn.TextColor3 = TextColor
                 ToggleBtn.TextSize = 16.000
@@ -861,7 +861,7 @@ function library.new(library, name, theme)
                 KeybindBtn.BorderSizePixel = 0
                 KeybindBtn.Size = UDim2.new(0, 428, 0, 38)
                 KeybindBtn.AutoButtonColor = false
-                KeybindBtn.Font = Enum.Font.GothamSemibold
+                KeybindBtn.Font = Enum.Font.GothamBold
                 KeybindBtn.Text = "   " .. text
                 KeybindBtn.TextColor3 = TextColor
                 KeybindBtn.TextSize = 16.000
@@ -889,7 +889,7 @@ function library.new(library, name, theme)
                 KeybindValue.BorderSizePixel = 0
                 KeybindValue.Size = UDim2.new(0, 100, 0, 28)
                 KeybindValue.AutoButtonColor = false
-                KeybindValue.Font = Enum.Font.Gotham
+                KeybindValue.Font = Enum.Font.GothamSemibold
                 KeybindValue.Text = keyTxt
                 KeybindValue.TextColor3 = TextColor
                 KeybindValue.TextSize = 14.000
@@ -975,7 +975,7 @@ function library.new(library, name, theme)
                 TextboxBack.BorderSizePixel = 0
                 TextboxBack.Size = UDim2.new(0, 428, 0, 38)
                 TextboxBack.AutoButtonColor = false
-                TextboxBack.Font = Enum.Font.GothamSemibold
+                TextboxBack.Font = Enum.Font.GothamBold
                 TextboxBack.Text = "   " .. text
                 TextboxBack.TextColor3 = TextColor
                 TextboxBack.TextSize = 16.000
@@ -1003,7 +1003,7 @@ function library.new(library, name, theme)
                 BoxBG.BorderSizePixel = 0
                 BoxBG.Size = UDim2.new(0, 100, 0, 28)
                 BoxBG.AutoButtonColor = false
-                BoxBG.Font = Enum.Font.Gotham
+                BoxBG.Font = Enum.Font.GothamSemibold
                 BoxBG.Text = ""
                 BoxBG.TextColor3 = TextColor
                 BoxBG.TextSize = 14.000
@@ -1014,8 +1014,8 @@ function library.new(library, name, theme)
 
                 local BoxStroke = Instance.new("UIStroke")
                 BoxStroke.Parent = BoxBG
-                BoxStroke.Color = TextColor
-                BoxStroke.Transparency = 0.85
+                BoxStroke.Color = Color3.fromRGB(180, 180, 180)
+                BoxStroke.Transparency = 0
                 BoxStroke.Thickness = 1
                 BoxStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
                 BoxStroke.LineJoinMode = Enum.LineJoinMode.Round
@@ -1025,7 +1025,7 @@ function library.new(library, name, theme)
                 TextBox.BackgroundTransparency = 1.000
                 TextBox.BorderSizePixel = 0
                 TextBox.Size = UDim2.new(1, 0, 1, 0)
-                TextBox.Font = Enum.Font.GothamSemibold
+                TextBox.Font = Enum.Font.GothamBold
                 TextBox.Text = default
                 TextBox.TextColor3 = TextColor
                 TextBox.TextSize = 14.000
@@ -1050,7 +1050,7 @@ function library.new(library, name, theme)
                     end
                     library.flags[flag] = TextBox.Text
                     callback(TextBox.Text)
-                    services.TweenService:Create(BoxStroke, TweenInfo.new(0.2), {Color = TextColor, Transparency = 0.85}):Play()
+                    services.TweenService:Create(BoxStroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(180, 180, 180), Transparency = 0}):Play()
                 end)
 
                 TextBox:GetPropertyChangedSignal("TextBounds"):Connect(function()
@@ -1099,7 +1099,7 @@ function library.new(library, name, theme)
                 SliderBack.BorderSizePixel = 0
                 SliderBack.Size = UDim2.new(0, 428, 0, 38)
                 SliderBack.AutoButtonColor = false
-                SliderBack.Font = Enum.Font.GothamSemibold
+                SliderBack.Font = Enum.Font.GothamBold
                 SliderBack.Text = "   " .. text
                 SliderBack.TextColor3 = TextColor
                 SliderBack.TextSize = 16.000
@@ -1127,7 +1127,7 @@ function library.new(library, name, theme)
                 SliderValBG.BorderSizePixel = 0
                 SliderValBG.Size = UDim2.new(0, 44, 0, 28)
                 SliderValBG.AutoButtonColor = false
-                SliderValBG.Font = Enum.Font.Gotham
+                SliderValBG.Font = Enum.Font.GothamSemibold
                 SliderValBG.Text = ""
                 SliderValBG.TextColor3 = TextColor
                 SliderValBG.TextSize = 14.000
@@ -1142,7 +1142,7 @@ function library.new(library, name, theme)
                 SliderValue.BackgroundTransparency = 1.000
                 SliderValue.BorderSizePixel = 0
                 SliderValue.Size = UDim2.new(1, 0, 1, 0)
-                SliderValue.Font = Enum.Font.Gotham
+                SliderValue.Font = Enum.Font.GothamSemibold
                 SliderValue.Text = "1000"
                 SliderValue.TextColor3 = TextColor
                 SliderValue.TextSize = 14.000
@@ -1155,7 +1155,7 @@ function library.new(library, name, theme)
                 AddSlider.BackgroundTransparency = 1.000
                 AddSlider.BorderSizePixel = 0
                 AddSlider.Size = UDim2.new(0, 20, 0, 20)
-                AddSlider.Font = Enum.Font.Gotham
+                AddSlider.Font = Enum.Font.GothamBold
                 AddSlider.Text = "+"
                 AddSlider.TextColor3 = TextColor
                 AddSlider.TextSize = 24.000
@@ -1191,7 +1191,7 @@ function library.new(library, name, theme)
                 MinSlider.BackgroundTransparency = 1.000
                 MinSlider.BorderSizePixel = 0
                 MinSlider.Size = UDim2.new(0, 20, 0, 20)
-                MinSlider.Font = Enum.Font.Gotham
+                MinSlider.Font = Enum.Font.GothamBold
                 MinSlider.Text = "-"
                 MinSlider.TextColor3 = TextColor
                 MinSlider.TextSize = 24.000
@@ -1334,7 +1334,7 @@ function library.new(library, name, theme)
                 DropdownTop.BorderSizePixel = 0
                 DropdownTop.Size = UDim2.new(0, 428, 0, 38)
                 DropdownTop.AutoButtonColor = false
-                DropdownTop.Font = Enum.Font.GothamSemibold
+                DropdownTop.Font = Enum.Font.GothamBold
                 DropdownTop.Text = ""
                 DropdownTop.TextColor3 = TextColor
                 DropdownTop.TextSize = 16.000
@@ -1362,7 +1362,7 @@ function library.new(library, name, theme)
                 DropdownOpen.BorderSizePixel = 0
                 DropdownOpen.Position = UDim2.new(1, -15, 0.5, 0)
                 DropdownOpen.Size = UDim2.new(0, 20, 0, 20)
-                DropdownOpen.Font = Enum.Font.Gotham
+                DropdownOpen.Font = Enum.Font.GothamBold
                 DropdownOpen.Text = "+"
                 DropdownOpen.TextColor3 = TextColor
                 DropdownOpen.TextSize = 24.000
@@ -1375,7 +1375,7 @@ function library.new(library, name, theme)
                 DropdownText.BorderSizePixel = 0
                 DropdownText.Position = UDim2.new(0.0373831764, 0, 0, 0)
                 DropdownText.Size = UDim2.new(0, 184, 0, 38)
-                DropdownText.Font = Enum.Font.GothamSemibold
+                DropdownText.Font = Enum.Font.GothamBold
                 DropdownText.PlaceholderColor3 = TextColor
                 DropdownText.PlaceholderText = text
                 DropdownText.Text = ""
@@ -1461,7 +1461,7 @@ function library.new(library, name, theme)
                     Option.Position = UDim2.new(0, 0, 0.328125, 0)
                     Option.Size = UDim2.new(0, 428, 0, 26)
                     Option.AutoButtonColor = false
-                    Option.Font = Enum.Font.Gotham
+                    Option.Font = Enum.Font.GothamSemibold
                     Option.Text = option
                     Option.TextColor3 = TextColor
                     Option.TextSize = 14.000
