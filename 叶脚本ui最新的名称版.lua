@@ -237,7 +237,6 @@ function library.new(library, name, theme)
     getgenv().CurrentUIHeight = 353
 
     getgenv().YeUI_SavedPos = UDim2.new(0.5, 0, 0.4, 0)
-    getgenv().YeUI_IsAnimating = false
 
     local function toggleui()
         local TS = game:GetService("TweenService")
@@ -247,37 +246,25 @@ function library.new(library, name, theme)
         end
         table.clear(_G.activeUITweens)
         
-        local targetPos = getgenv().YeUI_SavedPos
-        
         if not CloudMain.Visible then
+            local targetPos = getgenv().YeUI_SavedPos or UDim2.new(0.5, 0, 0.4, 0)
+            
             CloudMain.Position = UDim2.new(targetPos.X.Scale, targetPos.X.Offset, 1.5, 0)
             CloudMain.Visible = true
-            getgenv().YeUI_IsAnimating = true
             
             local openTween = TS:Create(CloudMain, TweenInfo.new(0.45, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Position = targetPos})
             table.insert(_G.activeUITweens, openTween)
-            
-            openTween.Completed:Once(function()
-                getgenv().YeUI_IsAnimating = false
-            end)
-            
             openTween:Play()
         else
-            if not getgenv().YeUI_IsAnimating then
-                getgenv().YeUI_SavedPos = CloudMain.Position
-                targetPos = getgenv().YeUI_SavedPos
-            end
+            getgenv().YeUI_SavedPos = CloudMain.Position
+            local currentPos = CloudMain.Position
             
-            getgenv().YeUI_IsAnimating = true
-            
-            local closeTween = TS:Create(CloudMain, TweenInfo.new(0.35, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {Position = UDim2.new(targetPos.X.Scale, targetPos.X.Offset, 1.5, 0)})
+            local closeTween = TS:Create(CloudMain, TweenInfo.new(0.35, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {Position = UDim2.new(currentPos.X.Scale, currentPos.X.Offset, 1.5, 0)})
             table.insert(_G.activeUITweens, closeTween)
             
             closeTween.Completed:Once(function() 
                 CloudMain.Visible = false 
-                getgenv().YeUI_IsAnimating = false
             end)
-            
             closeTween:Play()
         end
     end
