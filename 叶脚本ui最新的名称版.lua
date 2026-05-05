@@ -1449,5 +1449,3 @@ end
 
 _G.YeScript_UI_V7 = library
 return library
-
-```
