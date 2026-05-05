@@ -58,8 +58,8 @@ function Ripple(obj)
 end
 
 local toggled = false
-
 local switchingTabs = false
+
 function switchTab(new)
     if switchingTabs then
         return
@@ -88,7 +88,6 @@ function switchTab(new)
     new[2].Visible = true
 
     task.wait(0.1)
-
     switchingTabs = false
 end
 
@@ -141,8 +140,8 @@ function library.new(library, name, theme)
     end
         
     local TweenService = game:GetService("TweenService")
-    local textLabel = script.Parent 
 
+    -- Ins风白色玻璃感配色方案
     MainColor = Color3.fromRGB(245, 245, 245)
     Background = Color3.fromRGB(255, 255, 255)
     zyColor = Color3.fromRGB(255, 255, 255)
@@ -152,7 +151,9 @@ function library.new(library, name, theme)
     NameTransparency = 0
 
     local dogent = Instance.new("ScreenGui")
-    local CloudMain = Instance.new("Frame")
+    -- 核心优化：外壳用Frame装阴影，主内容用CanvasGroup做零卡顿贴图动画
+    local MainWrapper = Instance.new("Frame")
+    local CloudMain = Instance.new("CanvasGroup") 
     local TabMain = Instance.new("Frame")
     local MainC = Instance.new("UICorner")
     local SB = Instance.new("Frame")
@@ -181,18 +182,26 @@ function library.new(library, name, theme)
         dogent:Destroy()
     end
 
+    -- 外部不可见框架，用于挂载阴影和拖拽逻辑
+    MainWrapper.Name = "MainWrapper"
+    MainWrapper.Parent = dogent
+    MainWrapper.AnchorPoint = Vector2.new(0.5, 0.5)
+    MainWrapper.Position = UDim2.new(0.5, 0, 0.4, 0)
+    MainWrapper.Size = UDim2.new(0, 572, 0, 353)
+    MainWrapper.BackgroundTransparency = 1
+    MainWrapper.Visible = true
+    MainWrapper.Active = true
+    MainWrapper.Draggable = true
+    drag(MainWrapper)
+
+    -- CanvasGroup 处理内部所有组件，动画时性能消耗极低
     CloudMain.Name = "CloudMain"
-    CloudMain.Parent = dogent
-    CloudMain.AnchorPoint = Vector2.new(0.5, 0.5)
+    CloudMain.Parent = MainWrapper
     CloudMain.BackgroundColor3 = Background
     CloudMain.BorderColor3 = MainColor
-    CloudMain.Position = UDim2.new(0.5, 0, 0.4, 0)
-    CloudMain.Size = UDim2.new(0, 572, 0, 353) 
+    CloudMain.Size = UDim2.new(1, 0, 1, 0)
     CloudMain.BackgroundTransparency = 0.2
-    CloudMain.Visible = true 
-    CloudMain.Active = true
-    CloudMain.Draggable = true   
-    drag(CloudMain)
+    CloudMain.BorderSizePixel = 0
 
     UICornerMain.Parent = CloudMain
     UICornerMain.CornerRadius = UDim.new(0, 10) 
@@ -214,7 +223,7 @@ function library.new(library, name, theme)
     end)
 
     DropShadowHolder.Name = "DropShadowHolder"
-    DropShadowHolder.Parent = CloudMain
+    DropShadowHolder.Parent = MainWrapper
     DropShadowHolder.BackgroundTransparency = 1.000
     DropShadowHolder.BorderSizePixel = 0
     DropShadowHolder.Size = UDim2.new(1, 0, 1, 0)
@@ -237,13 +246,14 @@ function library.new(library, name, theme)
     getgenv().CurrentUIWidth = 572
     getgenv().CurrentUIHeight = 353
 
-    local uiScale = CloudMain:FindFirstChild("YeUIScale")
+    local uiScale = MainWrapper:FindFirstChild("YeUIScale")
     if not uiScale then
         uiScale = Instance.new("UIScale")
         uiScale.Name = "YeUIScale"
-        uiScale.Parent = CloudMain
+        uiScale.Parent = MainWrapper
     end
 
+    -- CanvasGroup专属：极致丝滑的开关动画
     local function toggleui()
         local TS = game:GetService("TweenService")
         
@@ -254,38 +264,41 @@ function library.new(library, name, theme)
         end
         table.clear(_G.activeUITweens)
         
-        local isOpening = not CloudMain.Visible
-        
-        local mainStroke = CloudMain:FindFirstChild("RainbowStroke")
-        local dropShadow = DropShadowHolder:FindFirstChild("DropShadow")
-        
-        if mainStroke then mainStroke.Enabled = false end
-        if dropShadow then dropShadow.Visible = false end
+        local isOpening = not MainWrapper.Visible
         
         if isOpening then
-            CloudMain.Visible = true
+            MainWrapper.Visible = true
             uiScale.Scale = 0.92
+            CloudMain.GroupTransparency = 1 
+            DropShadow.ImageTransparency = 1 
             
             local openTween = TS:Create(uiScale, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = 1})
-            table.insert(_G.activeUITweens, openTween)
+            local fadeUI = TS:Create(CloudMain, TweenInfo.new(0.25, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {GroupTransparency = 0})
+            local fadeShadow = TS:Create(DropShadow, TweenInfo.new(0.25, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {ImageTransparency = 0.7})
             
-            openTween.Completed:Once(function()
-                if mainStroke then mainStroke.Enabled = true end
-                if dropShadow then dropShadow.Visible = true end
-            end)
+            table.insert(_G.activeUITweens, openTween)
+            table.insert(_G.activeUITweens, fadeUI)
+            table.insert(_G.activeUITweens, fadeShadow)
             
             openTween:Play()
+            fadeUI:Play()
+            fadeShadow:Play()
         else
             local closeTween = TS:Create(uiScale, TweenInfo.new(0.2, Enum.EasingStyle.Sine, Enum.EasingDirection.In), {Scale = 0.95})
+            local fadeUI = TS:Create(CloudMain, TweenInfo.new(0.15, Enum.EasingStyle.Sine, Enum.EasingDirection.In), {GroupTransparency = 1})
+            local fadeShadow = TS:Create(DropShadow, TweenInfo.new(0.15, Enum.EasingStyle.Sine, Enum.EasingDirection.In), {ImageTransparency = 1})
+            
             table.insert(_G.activeUITweens, closeTween)
+            table.insert(_G.activeUITweens, fadeUI)
+            table.insert(_G.activeUITweens, fadeShadow)
             
             closeTween.Completed:Once(function() 
-                CloudMain.Visible = false 
-                if mainStroke then mainStroke.Enabled = true end
-                if dropShadow then dropShadow.Visible = true end
+                MainWrapper.Visible = false 
             end)
             
             closeTween:Play()
+            fadeUI:Play()
+            fadeShadow:Play()
         end
     end
 
@@ -296,10 +309,6 @@ function library.new(library, name, theme)
     TabMain.Position = UDim2.new(0.217000037, 0, 0, 3)
     TabMain.Size = UDim2.new(0, 448, 0, 353)
     
-    MainC.CornerRadius = UDim.new(0, 5.5)
-    MainC.Name = "MainC"
-    MainC.Parent = CloudMain 
-
     SB.Name = "SB"
     SB.Parent = CloudMain
     SB.BackgroundColor3 = TextColor
@@ -1399,13 +1408,6 @@ function library.new(library, name, theme)
         return tab
     end
 
-    CloudMain.Position = UDim2.new(0.5, 0, 0.4, 0) 
-    
-    SB.Size = UDim2.new(0, 8, 1, 0)
-    Side.Size = UDim2.new(0, 110, 1, 0)
-    TabBtns.Size = UDim2.new(1, 0, 1, -35)
-    TabMain.Size = UDim2.new(1, -124, 1, -3)
-    
     local ResizeHandle = Instance.new("TextButton")
     ResizeHandle.Name = "YeResizeHandle"
     ResizeHandle.Parent = CloudMain
@@ -1434,7 +1436,7 @@ function library.new(library, name, theme)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             isResizing = true
             dragStart = input.Position
-            startSize = CloudMain.Size
+            startSize = MainWrapper.Size
             TS:Create(ResizeHandle, animIn, {TextSize = 30, TextTransparency = 0}):Play()
         end
     end)
@@ -1444,8 +1446,8 @@ function library.new(library, name, theme)
             if isResizing then
                 isResizing = false
                 TS:Create(ResizeHandle, animOut, {TextSize = 22, TextTransparency = 0.3}):Play()
-                getgenv().CurrentUIWidth = CloudMain.Size.X.Offset
-                getgenv().CurrentUIHeight = CloudMain.Size.Y.Offset
+                getgenv().CurrentUIWidth = MainWrapper.Size.X.Offset
+                getgenv().CurrentUIHeight = MainWrapper.Size.Y.Offset
             end
         end
     end)
@@ -1455,7 +1457,7 @@ function library.new(library, name, theme)
             local delta = input.Position - dragStart
             local newWidth = math.clamp(startSize.X.Offset + delta.X, 450, 1000)
             local newHeight = math.clamp(startSize.Y.Offset + delta.Y, 250, 700)
-            CloudMain.Size = UDim2.new(0, newWidth, 0, newHeight)
+            MainWrapper.Size = UDim2.new(0, newWidth, 0, newHeight)
         end
     end)
 
