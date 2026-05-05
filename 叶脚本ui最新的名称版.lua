@@ -236,74 +236,32 @@ function library.new(library, name, theme)
     getgenv().CurrentUIWidth = 572
     getgenv().CurrentUIHeight = 353
 
-    local uiScale = CloudMain:FindFirstChild("YeUIScale")
-    if not uiScale then
-        uiScale = Instance.new("UIScale")
-        uiScale.Name = "YeUIScale"
-        uiScale.Parent = CloudMain
-    end
+    local lastPos = UDim2.new(0.5, 0, 0.4, 0)
 
     local function toggleui()
         local TS = game:GetService("TweenService")
         
-        local oldClone = dogent:FindFirstChild("YeTransitionClone")
-        if oldClone then oldClone:Destroy() end
+        for _, twn in ipairs(_G.activeUITweens) do
+            if twn then pcall(function() twn:Cancel() end) end
+        end
+        table.clear(_G.activeUITweens)
         
         if not CloudMain.Visible then
-            local clone = CloudMain:Clone()
-            clone.Name = "YeTransitionClone"
-            clone.Parent = dogent
-            clone.Visible = true
+            CloudMain.Position = UDim2.new(lastPos.X.Scale, lastPos.X.Offset, 1.5, 0)
+            CloudMain.Visible = true
             
-            for _, obj in ipairs(clone:GetDescendants()) do
-                if obj:IsA("ScrollingFrame") then
-                    local real = CloudMain:FindFirstChild(obj.Name, true)
-                    if real then obj.CanvasPosition = real.CanvasPosition end
-                end
-            end
-            
-            local cloneStroke = clone:FindFirstChild("RainbowStroke")
-            if cloneStroke then cloneStroke:Destroy() end
-            
-            local cloneScale = clone:FindFirstChild("YeUIScale") or Instance.new("UIScale", clone)
-            cloneScale.Scale = 0.5
-            
-            local openTween = TS:Create(cloneScale, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = 1})
-            
-            openTween.Completed:Once(function()
-                if clone then clone:Destroy() end
-                uiScale.Scale = 1 
-                CloudMain.Visible = true 
-            end)
-            
+            local openTween = TS:Create(CloudMain, TweenInfo.new(0.45, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Position = lastPos})
+            table.insert(_G.activeUITweens, openTween)
             openTween:Play()
         else
-            local clone = CloudMain:Clone()
-            clone.Name = "YeTransitionClone"
-            clone.Parent = dogent
-            clone.Visible = true
+            lastPos = CloudMain.Position
             
-            for _, obj in ipairs(clone:GetDescendants()) do
-                if obj:IsA("ScrollingFrame") then
-                    local real = CloudMain:FindFirstChild(obj.Name, true)
-                    if real then obj.CanvasPosition = real.CanvasPosition end
-                end
-            end
+            local closeTween = TS:Create(CloudMain, TweenInfo.new(0.35, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {Position = UDim2.new(lastPos.X.Scale, lastPos.X.Offset, 1.5, 0)})
+            table.insert(_G.activeUITweens, closeTween)
             
-            local cloneStroke = clone:FindFirstChild("RainbowStroke")
-            if cloneStroke then cloneStroke:Destroy() end
-            
-            CloudMain.Visible = false
-            
-            local cloneScale = clone:FindFirstChild("YeUIScale") or Instance.new("UIScale", clone)
-            cloneScale.Scale = 1
-            
-            local closeTween = TS:Create(cloneScale, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Scale = 0.5})
-            
-            closeTween.Completed:Once(function()
-                if clone then clone:Destroy() end
+            closeTween.Completed:Once(function() 
+                CloudMain.Visible = false 
             end)
-            
             closeTween:Play()
         end
     end
