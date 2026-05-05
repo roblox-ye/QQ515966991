@@ -7,10 +7,6 @@ local ToggleUI = true
 library.currentTab = nil
 library.flags = {}
 
-if _G.activeUITweens == nil then
-    _G.activeUITweens = {}
-end
-
 local services = setmetatable({}, {
     __index = function(t, k)
         return game.GetService(game, k)
@@ -151,9 +147,9 @@ function library.new(library, name, theme)
     NameTransparency = 0
 
     local dogent = Instance.new("ScreenGui")
-    -- 核心优化：外壳用Frame装阴影，主内容用CanvasGroup做零卡顿贴图动画
-    local MainWrapper = Instance.new("Frame")
-    local CloudMain = Instance.new("CanvasGroup") 
+    
+    -- 改回最基础、性能最好的 Frame 容器
+    local CloudMain = Instance.new("Frame") 
     local TabMain = Instance.new("Frame")
     local MainC = Instance.new("UICorner")
     local SB = Instance.new("Frame")
@@ -182,26 +178,19 @@ function library.new(library, name, theme)
         dogent:Destroy()
     end
 
-    -- 外部不可见框架，用于挂载阴影和拖拽逻辑
-    MainWrapper.Name = "MainWrapper"
-    MainWrapper.Parent = dogent
-    MainWrapper.AnchorPoint = Vector2.new(0.5, 0.5)
-    MainWrapper.Position = UDim2.new(0.5, 0, 0.4, 0)
-    MainWrapper.Size = UDim2.new(0, 572, 0, 353)
-    MainWrapper.BackgroundTransparency = 1
-    MainWrapper.Visible = true
-    MainWrapper.Active = true
-    MainWrapper.Draggable = true
-    drag(MainWrapper)
-
-    -- CanvasGroup 处理内部所有组件，动画时性能消耗极低
     CloudMain.Name = "CloudMain"
-    CloudMain.Parent = MainWrapper
+    CloudMain.Parent = dogent
+    CloudMain.AnchorPoint = Vector2.new(0.5, 0.5)
     CloudMain.BackgroundColor3 = Background
     CloudMain.BorderColor3 = MainColor
-    CloudMain.Size = UDim2.new(1, 0, 1, 0)
+    CloudMain.Position = UDim2.new(0.5, 0, 0.4, 0)
+    CloudMain.Size = UDim2.new(0, 572, 0, 353)
     CloudMain.BackgroundTransparency = 0.2
     CloudMain.BorderSizePixel = 0
+    CloudMain.Visible = true
+    CloudMain.Active = true
+    CloudMain.Draggable = true
+    drag(CloudMain)
 
     UICornerMain.Parent = CloudMain
     UICornerMain.CornerRadius = UDim.new(0, 10) 
@@ -223,7 +212,7 @@ function library.new(library, name, theme)
     end)
 
     DropShadowHolder.Name = "DropShadowHolder"
-    DropShadowHolder.Parent = MainWrapper
+    DropShadowHolder.Parent = CloudMain
     DropShadowHolder.BackgroundTransparency = 1.000
     DropShadowHolder.BorderSizePixel = 0
     DropShadowHolder.Size = UDim2.new(1, 0, 1, 0)
@@ -246,60 +235,9 @@ function library.new(library, name, theme)
     getgenv().CurrentUIWidth = 572
     getgenv().CurrentUIHeight = 353
 
-    local uiScale = MainWrapper:FindFirstChild("YeUIScale")
-    if not uiScale then
-        uiScale = Instance.new("UIScale")
-        uiScale.Name = "YeUIScale"
-        uiScale.Parent = MainWrapper
-    end
-
-    -- CanvasGroup专属：极致丝滑的开关动画
+    -- 极致性能优化：移除所有复杂的缩放补间动画，直接瞬发显示/隐藏
     local function toggleui()
-        local TS = game:GetService("TweenService")
-        
-        if not _G.activeUITweens then _G.activeUITweens = {} end
-        
-        for _, twn in ipairs(_G.activeUITweens) do
-            if twn then pcall(function() twn:Cancel() end) end
-        end
-        table.clear(_G.activeUITweens)
-        
-        local isOpening = not MainWrapper.Visible
-        
-        if isOpening then
-            MainWrapper.Visible = true
-            uiScale.Scale = 0.92
-            CloudMain.GroupTransparency = 1 
-            DropShadow.ImageTransparency = 1 
-            
-            local openTween = TS:Create(uiScale, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = 1})
-            local fadeUI = TS:Create(CloudMain, TweenInfo.new(0.25, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {GroupTransparency = 0})
-            local fadeShadow = TS:Create(DropShadow, TweenInfo.new(0.25, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {ImageTransparency = 0.7})
-            
-            table.insert(_G.activeUITweens, openTween)
-            table.insert(_G.activeUITweens, fadeUI)
-            table.insert(_G.activeUITweens, fadeShadow)
-            
-            openTween:Play()
-            fadeUI:Play()
-            fadeShadow:Play()
-        else
-            local closeTween = TS:Create(uiScale, TweenInfo.new(0.2, Enum.EasingStyle.Sine, Enum.EasingDirection.In), {Scale = 0.95})
-            local fadeUI = TS:Create(CloudMain, TweenInfo.new(0.15, Enum.EasingStyle.Sine, Enum.EasingDirection.In), {GroupTransparency = 1})
-            local fadeShadow = TS:Create(DropShadow, TweenInfo.new(0.15, Enum.EasingStyle.Sine, Enum.EasingDirection.In), {ImageTransparency = 1})
-            
-            table.insert(_G.activeUITweens, closeTween)
-            table.insert(_G.activeUITweens, fadeUI)
-            table.insert(_G.activeUITweens, fadeShadow)
-            
-            closeTween.Completed:Once(function() 
-                MainWrapper.Visible = false 
-            end)
-            
-            closeTween:Play()
-            fadeUI:Play()
-            fadeShadow:Play()
-        end
+        CloudMain.Visible = not CloudMain.Visible
     end
 
     TabMain.Name = "TabMain"
@@ -1436,7 +1374,7 @@ function library.new(library, name, theme)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             isResizing = true
             dragStart = input.Position
-            startSize = MainWrapper.Size
+            startSize = CloudMain.Size
             TS:Create(ResizeHandle, animIn, {TextSize = 30, TextTransparency = 0}):Play()
         end
     end)
@@ -1446,8 +1384,8 @@ function library.new(library, name, theme)
             if isResizing then
                 isResizing = false
                 TS:Create(ResizeHandle, animOut, {TextSize = 22, TextTransparency = 0.3}):Play()
-                getgenv().CurrentUIWidth = MainWrapper.Size.X.Offset
-                getgenv().CurrentUIHeight = MainWrapper.Size.Y.Offset
+                getgenv().CurrentUIWidth = CloudMain.Size.X.Offset
+                getgenv().CurrentUIHeight = CloudMain.Size.Y.Offset
             end
         end
     end)
@@ -1457,7 +1395,7 @@ function library.new(library, name, theme)
             local delta = input.Position - dragStart
             local newWidth = math.clamp(startSize.X.Offset + delta.X, 450, 1000)
             local newHeight = math.clamp(startSize.Y.Offset + delta.Y, 250, 700)
-            MainWrapper.Size = UDim2.new(0, newWidth, 0, newHeight)
+            CloudMain.Size = UDim2.new(0, newWidth, 0, newHeight)
         end
     end)
 
