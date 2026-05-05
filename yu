@@ -58,17 +58,18 @@ function Ripple(obj)
 end
 
 local toggled = false
-
 local switchingTabs = false
+
 function switchTab(new)
     if switchingTabs then
         return
     end
     local old = library.currentTab
+    
     if old == nil then
-        new[2].Visible = true
-        new[2].Position = UDim2.new(0, 0, 0, 15)
-        services.TweenService:Create(new[2], TweenInfo.new(0.35, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Position = UDim2.new(0, 0, 0, 0)}):Play()
+        -- 首次打开，直接从下往上滑入
+        new[2].Position = UDim2.new(0, 0, 1.2, 0)
+        services.TweenService:Create(new[2], TweenInfo.new(0.4, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Position = UDim2.new(0, 0, 0, 0)}):Play()
         
         library.currentTab = new
         services.TweenService:Create(new[1], TweenInfo.new(0.1), {ImageTransparency = 0}):Play()
@@ -80,9 +81,11 @@ function switchTab(new)
     if old[1] == new[1] then
         return
     end
+    
     switchingTabs = true
     library.currentTab = new
 
+    -- 按钮颜色变换
     services.TweenService:Create(old[1], TweenInfo.new(0.1), {ImageTransparency = 0.2}):Play()
     services.TweenService:Create(new[1], TweenInfo.new(0.1), {ImageTransparency = 0}):Play()
     services.TweenService:Create(old[1].TabText, TweenInfo.new(0.1), {TextTransparency = 0.2}):Play()
@@ -90,13 +93,15 @@ function switchTab(new)
     services.TweenService:Create(old[1].TabBtn, TweenInfo.new(0.2), {BackgroundTransparency = 1}):Play()
     services.TweenService:Create(new[1].TabBtn, TweenInfo.new(0.2), {BackgroundTransparency = 0.9}):Play()
 
-    old[2].Visible = false
-    new[2].Visible = true
-    new[2].Position = UDim2.new(0, 0, 0, 15)
+    -- 核心：纯物理滑动，不再使用 Visible 隐藏/显示，彻底解决卡顿
+    -- 旧标签页向上滑出
+    services.TweenService:Create(old[2], TweenInfo.new(0.35, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Position = UDim2.new(0, 0, -1.2, 0)}):Play()
+    
+    -- 新标签页重置到下方，然后向上滑入
+    new[2].Position = UDim2.new(0, 0, 1.2, 0)
     services.TweenService:Create(new[2], TweenInfo.new(0.35, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Position = UDim2.new(0, 0, 0, 0)}):Play()
 
-    task.wait(0.1)
-
+    task.wait(0.35)
     switchingTabs = false
 end
 
@@ -296,6 +301,7 @@ function library.new(library, name, theme)
     TabMain.BackgroundTransparency = 1.000
     TabMain.Position = UDim2.new(0.217000037, 0, 0, 3)
     TabMain.Size = UDim2.new(0, 448, 0, 353)
+    TabMain.ClipsDescendants = true -- 核心：遮挡滑出外部的标签页
     
     MainC.CornerRadius = UDim.new(0, 5.5)
     MainC.Name = "MainC"
@@ -440,7 +446,8 @@ function library.new(library, name, theme)
         Tab.BackgroundTransparency = 1.000
         Tab.Size = UDim2.new(1, 0, 1, 0)
         Tab.ScrollBarThickness = 2
-        Tab.Visible = false
+        Tab.Visible = true -- 核心：通过默认开启避免布局卡顿
+        Tab.Position = UDim2.new(0, 0, 1.2, 0) -- 隐藏在下方区域
 
         TabIco.Name = "TabIco"
         TabIco.Parent = TabBtns
