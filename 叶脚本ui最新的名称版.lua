@@ -150,7 +150,7 @@ function library.new(library, name, theme)
     NameTransparency = 0
 
     local dogent = Instance.new("ScreenGui")
-    local CloudMain = Instance.new("CanvasGroup") 
+    local CloudMain = Instance.new("Frame") 
     local TabMain = Instance.new("Frame")
     local MainC = Instance.new("UICorner")
     local SB = Instance.new("Frame")
@@ -243,7 +243,9 @@ function library.new(library, name, theme)
         uiScale.Parent = CloudMain
     end
 
-        local function toggleui()
+    getgenv().YeUI_IsAnimating = false
+
+    local function toggleui()
         local TS = game:GetService("TweenService")
         
         for _, twn in ipairs(_G.activeUITweens) do
@@ -251,36 +253,39 @@ function library.new(library, name, theme)
         end
         table.clear(_G.activeUITweens)
         
+        local mainStroke = CloudMain:FindFirstChild("RainbowStroke")
+        
+        getgenv().YeUI_IsAnimating = true 
+        
         if not CloudMain.Visible then
             CloudMain.Visible = true
-            uiScale.Scale = 0.9
-            CloudMain.GroupTransparency = 1
-            local openScale = TS:Create(uiScale, TweenInfo.new(0.4, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Scale = 1})
-            local openFade = TS:Create(CloudMain, TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {GroupTransparency = 0})
+            uiScale.Scale = 0.5 
             
+            if mainStroke then mainStroke.Enabled = false end 
+            
+            local openScale = TS:Create(uiScale, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = 1})
             table.insert(_G.activeUITweens, openScale)
-            table.insert(_G.activeUITweens, openFade)
+            
+            openScale.Completed:Once(function()
+                if mainStroke and CloudMain.Visible then mainStroke.Enabled = true end
+                getgenv().YeUI_IsAnimating = false 
+            end)
             
             openScale:Play()
-            openFade:Play()
         else
-            local closeScale = TS:Create(uiScale, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {Scale = 0.9})
-            local closeFade = TS:Create(CloudMain, TweenInfo.new(0.2, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {GroupTransparency = 1})
+            if mainStroke then mainStroke.Enabled = false end 
             
+            local closeScale = TS:Create(uiScale, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Scale = 0.5})
             table.insert(_G.activeUITweens, closeScale)
-            table.insert(_G.activeUITweens, closeFade)
             
-            closeFade.Completed:Once(function() 
-                if CloudMain.GroupTransparency == 1 then
-                    CloudMain.Visible = false 
-                end
+            closeScale.Completed:Once(function() 
+                CloudMain.Visible = false 
+                getgenv().YeUI_IsAnimating = false 
             end)
             
             closeScale:Play()
-            closeFade:Play()
         end
     end
-
 
     TabMain.Name = "TabMain"
     TabMain.Parent = CloudMain
@@ -480,6 +485,7 @@ function library.new(library, name, theme)
         end
 
         TabL:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+            if getgenv().YeUI_IsAnimating then return end
             Tab.CanvasSize = UDim2.new(0, 0, 0, TabL.AbsoluteContentSize.Y + 8)
         end)
 
@@ -568,6 +574,7 @@ function library.new(library, name, theme)
             end)
 
             ObjsL:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+                if getgenv().YeUI_IsAnimating then return end
                 if not open then
                     return
                 end
@@ -1327,6 +1334,7 @@ function library.new(library, name, theme)
                 end)
 
                 DropdownModuleL:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+                    if getgenv().YeUI_IsAnimating then return end
                     if not open then
                         return
                     end
@@ -1461,4 +1469,5 @@ function library.new(library, name, theme)
 end
 
 _G.YeScript_UI_V7 = library
-return library 
+return library
+
