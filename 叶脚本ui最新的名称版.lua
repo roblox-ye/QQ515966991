@@ -243,8 +243,6 @@ function library.new(library, name, theme)
         uiScale.Parent = CloudMain
     end
 
-    getgenv().YeUI_IsAnimating = false
-
     local function toggleui()
         local TS = game:GetService("TweenService")
         
@@ -254,8 +252,6 @@ function library.new(library, name, theme)
         table.clear(_G.activeUITweens)
         
         local mainStroke = CloudMain:FindFirstChild("RainbowStroke")
-        
-        getgenv().YeUI_IsAnimating = true 
         
         if not CloudMain.Visible then
             CloudMain.Visible = true
@@ -268,7 +264,6 @@ function library.new(library, name, theme)
             
             openScale.Completed:Once(function()
                 if mainStroke and CloudMain.Visible then mainStroke.Enabled = true end
-                getgenv().YeUI_IsAnimating = false 
             end)
             
             openScale:Play()
@@ -280,7 +275,6 @@ function library.new(library, name, theme)
             
             closeScale.Completed:Once(function() 
                 CloudMain.Visible = false 
-                getgenv().YeUI_IsAnimating = false 
             end)
             
             closeScale:Play()
@@ -361,7 +355,8 @@ function library.new(library, name, theme)
     SBG.Parent = SB
 
     TabBtnsL:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-        TabBtns.CanvasSize = UDim2.new(0, 0, 0, TabBtnsL.AbsoluteContentSize.Y + 18)
+        local scaleFactor = math.max(uiScale.Scale, 0.01)
+        TabBtns.CanvasSize = UDim2.new(0, 0, 0, (TabBtnsL.AbsoluteContentSize.Y / scaleFactor) + 18)
     end)
 
     Open.Name = "Open"
@@ -485,8 +480,8 @@ function library.new(library, name, theme)
         end
 
         TabL:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-            if getgenv().YeUI_IsAnimating then return end
-            Tab.CanvasSize = UDim2.new(0, 0, 0, TabL.AbsoluteContentSize.Y + 8)
+            local scaleFactor = math.max(uiScale.Scale, 0.01)
+            Tab.CanvasSize = UDim2.new(0, 0, 0, (TabL.AbsoluteContentSize.Y / scaleFactor) + 8)
         end)
 
         local tab = {}
@@ -561,24 +556,26 @@ function library.new(library, name, theme)
 
             local open = TabVal
             if TabVal ~= false then
-                Section.Size = UDim2.new(0.981000006, 0, 0, open and 36 + ObjsL.AbsoluteContentSize.Y + 8 or 36)
+                local scaleFactor = math.max(uiScale.Scale, 0.01)
+                Section.Size = UDim2.new(0.981000006, 0, 0, open and 36 + (ObjsL.AbsoluteContentSize.Y / scaleFactor) + 8 or 36)
                 SectionOpened.ImageTransparency = (open and 0 or 1)
                 SectionOpen.ImageTransparency = (open and 1 or 0)
             end
 
             SectionToggle.MouseButton1Click:Connect(function()
                 open = not open
-                Section.Size = UDim2.new(0.981000006, 0, 0, open and 36 + ObjsL.AbsoluteContentSize.Y + 8 or 36)
+                local scaleFactor = math.max(uiScale.Scale, 0.01)
+                Section.Size = UDim2.new(0.981000006, 0, 0, open and 36 + (ObjsL.AbsoluteContentSize.Y / scaleFactor) + 8 or 36)
                 SectionOpened.ImageTransparency = (open and 0 or 1)
                 SectionOpen.ImageTransparency = (open and 1 or 0)
             end)
 
             ObjsL:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-                if getgenv().YeUI_IsAnimating then return end
                 if not open then
                     return
                 end
-                Section.Size = UDim2.new(0.981000006, 0, 0, 36 + ObjsL.AbsoluteContentSize.Y + 8)
+                local scaleFactor = math.max(uiScale.Scale, 0.01)
+                Section.Size = UDim2.new(0.981000006, 0, 0, 36 + (ObjsL.AbsoluteContentSize.Y / scaleFactor) + 8)
             end)
 
             local section = {}
@@ -1314,8 +1311,8 @@ function library.new(library, name, theme)
                         setAllVisible()
                     end
                     DropdownOpen.Text = (open and "-" or "+")
-                    DropdownModule.Size =
-                        UDim2.new(0, 428, 0, (open and DropdownModuleL.AbsoluteContentSize.Y + 4 or 38))
+                    local scaleFactor = math.max(uiScale.Scale, 0.01)
+                    DropdownModule.Size = UDim2.new(0, 428, 0, (open and (DropdownModuleL.AbsoluteContentSize.Y / scaleFactor) + 4 or 38))
                 end
 
                 DropdownOpen.MouseButton1Click:Connect(ToggleDropVis)
@@ -1334,11 +1331,11 @@ function library.new(library, name, theme)
                 end)
 
                 DropdownModuleL:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-                    if getgenv().YeUI_IsAnimating then return end
                     if not open then
                         return
                     end
-                    DropdownModule.Size = UDim2.new(0, 428, 0, (DropdownModuleL.AbsoluteContentSize.Y + 4))
+                    local scaleFactor = math.max(uiScale.Scale, 0.01)
+                    DropdownModule.Size = UDim2.new(0, 428, 0, (DropdownModuleL.AbsoluteContentSize.Y / scaleFactor) + 4)
                 end)
 
                 local funcs = {}
@@ -1470,4 +1467,3 @@ end
 
 _G.YeScript_UI_V7 = library
 return library
-
