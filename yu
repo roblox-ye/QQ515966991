@@ -622,7 +622,7 @@ function library.new(library, name, theme)
                 Btn.Transparency = interfaceTransparency
                 Btn.TextTransparency = NameTransparency
 
-                BtnC.CornerRadius = UDim.new(0, 11)
+                BtnC.CornerRadius = UDim.new(0, 10)
                 BtnC.Name = "BtnC"
                 BtnC.Parent = Btn
 
@@ -665,7 +665,7 @@ function library.new(library, name, theme)
                 TextLabel.TextSize = 14.000
                 TextLabel.TextTransparency = NameTransparency
 
-                LabelC.CornerRadius = UDim.new(0, 12)
+                LabelC.CornerRadius = UDim.new(0, 10)
                 LabelC.Name = "LabelC"
                 LabelC.Parent = TextLabel
 
@@ -710,7 +710,7 @@ function library.new(library, name, theme)
                 ToggleBtn.Transparency = interfaceTransparency
                 ToggleBtn.TextTransparency = NameTransparency
 
-                ToggleBtnC.CornerRadius = UDim.new(0, 11)
+                ToggleBtnC.CornerRadius = UDim.new(0, 10)
                 ToggleBtnC.Name = "ToggleBtnC"
                 ToggleBtnC.Parent = ToggleBtn
 
@@ -724,16 +724,18 @@ function library.new(library, name, theme)
 
                 ToggleDisable.Name = "ToggleDisable"
                 ToggleDisable.Parent = ToggleBtn
+                ToggleDisable.AnchorPoint = Vector2.new(1, 0.5)
+                ToggleDisable.Position = UDim2.new(1, -12, 0.5, 0)
                 ToggleDisable.BackgroundColor3 = beijingColor
                 ToggleDisable.BorderSizePixel = 0
-                ToggleDisable.Position = UDim2.new(0.901869178, 0, 0.208881587, 0)
                 ToggleDisable.Size = UDim2.new(0, 44, 0, 24)
 
                 ToggleSwitch.Name = "ToggleSwitch"
                 ToggleSwitch.Parent = ToggleDisable
-                ToggleSwitch.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+                ToggleSwitch.AnchorPoint = Vector2.new(0, 0.5)
+                ToggleSwitch.Position = UDim2.new(0, 2, 0.5, 0)
+                ToggleSwitch.BackgroundColor3 = Color3.fromRGB(255, 255, 255) 
                 ToggleSwitch.Size = UDim2.new(0, 20, 0, 20)
-                ToggleSwitch.Position = UDim2.new(0, 2, 0, 2)
 
                 ToggleSwitchC.CornerRadius = UDim.new(1, 0)
                 ToggleSwitchC.Name = "ToggleSwitchC"
@@ -751,14 +753,15 @@ function library.new(library, name, theme)
                         if library.flags[flag] == state then
                             return
                         end
+                        
                         services.TweenService:Create(
                             ToggleSwitch,
                             TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
                             {
-                                Position = UDim2.new(0, (state and 22 or 2), 0, 2),
-                                BackgroundColor3 = (state and Color3.fromRGB(0, 122, 255) or Color3.fromRGB(255, 255, 255))
+                                Position = UDim2.new(0, (state and 22 or 2), 0.5, 0)
                             }
                         ):Play()
+                        
                         services.TweenService:Create(
                             ToggleDisable,
                             TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
@@ -766,6 +769,7 @@ function library.new(library, name, theme)
                                 BackgroundColor3 = (state and Color3.fromRGB(0, 122, 255) or beijingColor)
                             }
                         ):Play()
+                        
                         library.flags[flag] = state
                         callback(state)
                     end,
@@ -845,7 +849,7 @@ function library.new(library, name, theme)
                 KeybindBtn.Transparency = interfaceTransparency
                 KeybindBtn.TextTransparency = NameTransparency
 
-                KeybindBtnC.CornerRadius = UDim.new(0, 12)
+                KeybindBtnC.CornerRadius = UDim.new(0, 10)
                 KeybindBtnC.Name = "KeybindBtnC"
                 KeybindBtnC.Parent = KeybindBtn
 
@@ -859,9 +863,10 @@ function library.new(library, name, theme)
 
                 KeybindValue.Name = "KeybindValue"
                 KeybindValue.Parent = KeybindBtn
+                KeybindValue.AnchorPoint = Vector2.new(1, 0.5)
+                KeybindValue.Position = UDim2.new(1, -12, 0.5, 0)
                 KeybindValue.BackgroundColor3 = Background
                 KeybindValue.BorderSizePixel = 0
-                KeybindValue.Position = UDim2.new(0.763033211, 0, 0.289473683, 0)
                 KeybindValue.Size = UDim2.new(0, 100, 0, 28)
                 KeybindValue.AutoButtonColor = false
                 KeybindValue.Font = Enum.Font.Gotham
@@ -869,7 +874,7 @@ function library.new(library, name, theme)
                 KeybindValue.TextColor3 = TextColor
                 KeybindValue.TextSize = 14.000
 
-                KeybindValueC.CornerRadius = UDim.new(0, 12)
+                KeybindValueC.CornerRadius = UDim.new(0, 8)
                 KeybindValueC.Name = "KeybindValueC"
                 KeybindValueC.Parent = KeybindValue
 
@@ -958,7 +963,7 @@ function library.new(library, name, theme)
                 TextboxBack.Transparency = interfaceTransparency
                 TextboxBack.TextTransparency = NameTransparency
 
-                TextboxBackC.CornerRadius = UDim.new(0, 12)
+                TextboxBackC.CornerRadius = UDim.new(0, 10)
                 TextboxBackC.Name = "TextboxBackC"
                 TextboxBackC.Parent = TextboxBack
 
@@ -972,9 +977,10 @@ function library.new(library, name, theme)
 
                 BoxBG.Name = "BoxBG"
                 BoxBG.Parent = TextboxBack
+                BoxBG.AnchorPoint = Vector2.new(1, 0.5)
+                BoxBG.Position = UDim2.new(1, -12, 0.5, 0)
                 BoxBG.BackgroundColor3 = Background
                 BoxBG.BorderSizePixel = 0
-                BoxBG.Position = UDim2.new(0.763033211, 0, 0.289473683, 0)
                 BoxBG.Size = UDim2.new(0, 100, 0, 28)
                 BoxBG.AutoButtonColor = false
                 BoxBG.Font = Enum.Font.Gotham
@@ -982,7 +988,7 @@ function library.new(library, name, theme)
                 BoxBG.TextColor3 = TextColor
                 BoxBG.TextSize = 14.000
 
-                BoxBGC.CornerRadius = UDim.new(0, 12)
+                BoxBGC.CornerRadius = UDim.new(0, 8)
                 BoxBGC.Name = "BoxBGC"
                 BoxBGC.Parent = BoxBG
 
@@ -1068,7 +1074,7 @@ function library.new(library, name, theme)
                 SliderBack.Transparency = interfaceTransparency
                 SliderBack.TextTransparency = NameTransparency
 
-                SliderBackC.CornerRadius = UDim.new(0, 12)
+                SliderBackC.CornerRadius = UDim.new(0, 10)
                 SliderBackC.Name = "SliderBackC"
                 SliderBackC.Parent = SliderBack
 
@@ -1080,33 +1086,12 @@ function library.new(library, name, theme)
                 SliderStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
                 SliderStroke.LineJoinMode = Enum.LineJoinMode.Round
 
-                SliderBar.Name = "SliderBar"
-                SliderBar.Parent = SliderBack
-                SliderBar.AnchorPoint = Vector2.new(0, 0.5)
-                SliderBar.BackgroundColor3 = Background
-                SliderBar.BorderSizePixel = 0
-                SliderBar.Position = UDim2.new(0.369000018, 40, 0.5, 0)
-                SliderBar.Size = UDim2.new(0, 140, 0, 12)
-
-                SliderBarC.CornerRadius = UDim.new(0, 12)
-                SliderBarC.Name = "SliderBarC"
-                SliderBarC.Parent = SliderBar
-
-                SliderPart.Name = "SliderPart"
-                SliderPart.Parent = SliderBar
-                SliderPart.BackgroundColor3 = Color3.fromRGB(0, 122, 255)
-                SliderPart.BorderSizePixel = 0
-                SliderPart.Size = UDim2.new(0, 54, 0, 13)
-
-                SliderPartC.CornerRadius = UDim.new(0, 12)
-                SliderPartC.Name = "SliderPartC"
-                SliderPartC.Parent = SliderPart
-
                 SliderValBG.Name = "SliderValBG"
                 SliderValBG.Parent = SliderBack
+                SliderValBG.AnchorPoint = Vector2.new(1, 0.5)
+                SliderValBG.Position = UDim2.new(1, -12, 0.5, 0)
                 SliderValBG.BackgroundColor3 = Background
                 SliderValBG.BorderSizePixel = 0
-                SliderValBG.Position = UDim2.new(0.883177578, 0, 0.131578952, 0)
                 SliderValBG.Size = UDim2.new(0, 44, 0, 28)
                 SliderValBG.AutoButtonColor = false
                 SliderValBG.Font = Enum.Font.Gotham
@@ -1114,7 +1099,7 @@ function library.new(library, name, theme)
                 SliderValBG.TextColor3 = TextColor
                 SliderValBG.TextSize = 14.000
 
-                SliderValBGC.CornerRadius = UDim.new(0, 12)
+                SliderValBGC.CornerRadius = UDim.new(0, 8)
                 SliderValBGC.Name = "SliderValBGC"
                 SliderValBGC.Parent = SliderValBG
 
@@ -1129,32 +1114,55 @@ function library.new(library, name, theme)
                 SliderValue.TextColor3 = TextColor
                 SliderValue.TextSize = 14.000
 
-                MinSlider.Name = "MinSlider"
-                MinSlider.Parent = SliderModule
-                MinSlider.BackgroundColor3 = TextColor
-                MinSlider.BackgroundTransparency = 1.000
-                MinSlider.BorderSizePixel = 0
-                MinSlider.Position = UDim2.new(0.296728969, 40, 0.236842096, 0)
-                MinSlider.Size = UDim2.new(0, 20, 0, 20)
-                MinSlider.Font = Enum.Font.Gotham
-                MinSlider.Text = "-"
-                MinSlider.TextColor3 = TextColor
-                MinSlider.TextSize = 24.000
-                MinSlider.TextWrapped = true
-
                 AddSlider.Name = "AddSlider"
-                AddSlider.Parent = SliderModule
-                AddSlider.AnchorPoint = Vector2.new(0, 0.5)
+                AddSlider.Parent = SliderBack
+                AddSlider.AnchorPoint = Vector2.new(1, 0.5)
+                AddSlider.Position = UDim2.new(1, -62, 0.5, 0)
                 AddSlider.BackgroundColor3 = TextColor
                 AddSlider.BackgroundTransparency = 1.000
                 AddSlider.BorderSizePixel = 0
-                AddSlider.Position = UDim2.new(0.810906529, 0, 0.5, 0)
                 AddSlider.Size = UDim2.new(0, 20, 0, 20)
                 AddSlider.Font = Enum.Font.Gotham
                 AddSlider.Text = "+"
                 AddSlider.TextColor3 = TextColor
                 AddSlider.TextSize = 24.000
                 AddSlider.TextWrapped = true
+
+                SliderBar.Name = "SliderBar"
+                SliderBar.Parent = SliderBack
+                SliderBar.AnchorPoint = Vector2.new(1, 0.5)
+                SliderBar.Position = UDim2.new(1, -88, 0.5, 0)
+                SliderBar.BackgroundColor3 = Background
+                SliderBar.BorderSizePixel = 0
+                SliderBar.Size = UDim2.new(0, 130, 0, 6)
+
+                SliderBarC.CornerRadius = UDim.new(1, 0)
+                SliderBarC.Name = "SliderBarC"
+                SliderBarC.Parent = SliderBar
+
+                SliderPart.Name = "SliderPart"
+                SliderPart.Parent = SliderBar
+                SliderPart.BackgroundColor3 = Color3.fromRGB(0, 122, 255)
+                SliderPart.BorderSizePixel = 0
+                SliderPart.Size = UDim2.new(0, 54, 1, 0)
+
+                SliderPartC.CornerRadius = UDim.new(1, 0)
+                SliderPartC.Name = "SliderPartC"
+                SliderPartC.Parent = SliderPart
+
+                MinSlider.Name = "MinSlider"
+                MinSlider.Parent = SliderBack
+                MinSlider.AnchorPoint = Vector2.new(1, 0.5)
+                MinSlider.Position = UDim2.new(1, -224, 0.5, 0)
+                MinSlider.BackgroundColor3 = TextColor
+                MinSlider.BackgroundTransparency = 1.000
+                MinSlider.BorderSizePixel = 0
+                MinSlider.Size = UDim2.new(0, 20, 0, 20)
+                MinSlider.Font = Enum.Font.Gotham
+                MinSlider.Text = "-"
+                MinSlider.TextColor3 = TextColor
+                MinSlider.TextSize = 24.000
+                MinSlider.TextWrapped = true
 
                 local funcs = {
                     SetValue = function(self, value)
@@ -1301,7 +1309,7 @@ function library.new(library, name, theme)
                 DropdownTop.Transparency = interfaceTransparency
                 DropdownTop.TextTransparency = NameTransparency
 
-                DropdownTopC.CornerRadius = UDim.new(0, 12)
+                DropdownTopC.CornerRadius = UDim.new(0, 10)
                 DropdownTopC.Name = "DropdownTopC"
                 DropdownTopC.Parent = DropdownTop
 
@@ -1315,11 +1323,11 @@ function library.new(library, name, theme)
 
                 DropdownOpen.Name = "DropdownOpen"
                 DropdownOpen.Parent = DropdownTop
-                DropdownOpen.AnchorPoint = Vector2.new(0, 0.5)
+                DropdownOpen.AnchorPoint = Vector2.new(1, 0.5)
                 DropdownOpen.BackgroundColor3 = TextColor
                 DropdownOpen.BackgroundTransparency = 1.000
                 DropdownOpen.BorderSizePixel = 0
-                DropdownOpen.Position = UDim2.new(0.918383181, 0, 0.5, 0)
+                DropdownOpen.Position = UDim2.new(1, -15, 0.5, 0)
                 DropdownOpen.Size = UDim2.new(0, 20, 0, 20)
                 DropdownOpen.Font = Enum.Font.Gotham
                 DropdownOpen.Text = "+"
@@ -1425,7 +1433,7 @@ function library.new(library, name, theme)
                     Option.TextColor3 = TextColor
                     Option.TextSize = 14.000
 
-                    OptionC.CornerRadius = UDim.new(0, 12)
+                    OptionC.CornerRadius = UDim.new(0, 10)
                     OptionC.Name = "OptionC"
                     OptionC.Parent = Option
 
