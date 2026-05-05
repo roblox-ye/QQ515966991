@@ -34,25 +34,26 @@ function Ripple(obj)
         Ripple.Name = "Ripple"
         Ripple.Parent = obj
         Ripple.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        Ripple.BackgroundTransparency = 0.600
+        Ripple.BackgroundTransparency = 0.4
         Ripple.BorderSizePixel = 0
         Ripple.ZIndex = 8
         RippleCorner.CornerRadius = UDim.new(1, 0)
         RippleCorner.Parent = Ripple
-        Ripple.Position = UDim2.new(
-            (mouse.X - Ripple.AbsolutePosition.X) / obj.AbsoluteSize.X,
-            0,
-            (mouse.Y - Ripple.AbsolutePosition.Y) / obj.AbsoluteSize.Y,
-            0
-        )
-        Tween(
-            Ripple,
-            {.3, "Linear", "InOut"},
-            {Position = UDim2.new(-5.5, 0, -5.5, 0), Size = UDim2.new(12, 0, 12, 0)}
-        )
-        wait(0.15)
-        Tween(Ripple, {.3, "Linear", "InOut"}, {BackgroundTransparency = 1})
-        wait(.3)
+        
+        local maxSize = math.max(obj.AbsoluteSize.X, obj.AbsoluteSize.Y) * 1.5
+        local x = mouse.X - obj.AbsolutePosition.X
+        local y = mouse.Y - obj.AbsolutePosition.Y
+        
+        Ripple.Size = UDim2.new(0, 0, 0, 0)
+        Ripple.Position = UDim2.new(0, x, 0, y)
+        
+        services.TweenService:Create(Ripple, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+            Size = UDim2.new(0, maxSize, 0, maxSize),
+            Position = UDim2.new(0, x - maxSize / 2, 0, y - maxSize / 2),
+            BackgroundTransparency = 1
+        }):Play()
+        
+        wait(0.4)
         Ripple:Destroy()
     end)
 end
@@ -350,10 +351,10 @@ function library.new(library, name, theme)
     ScriptTitle.BackgroundTransparency = 1.000
     ScriptTitle.Position = UDim2.new(0, 0, 0.00953488424, 0)
     ScriptTitle.Size = UDim2.new(0, 102, 0, 20)
-    ScriptTitle.Font = Enum.Font.GothamSemibold
+    ScriptTitle.Font = Enum.Font.GothamBold
     ScriptTitle.Text = name
     ScriptTitle.TextColor3 = TextColor
-    ScriptTitle.TextSize = 14.000
+    ScriptTitle.TextSize = 16.000
     ScriptTitle.TextScaled = true
     ScriptTitle.TextXAlignment = Enum.TextXAlignment.Left
 
@@ -469,10 +470,10 @@ function library.new(library, name, theme)
         TabText.BackgroundTransparency = 1.000
         TabText.Position = UDim2.new(0, 12, 0, 0)
         TabText.Size = UDim2.new(0, 76, 0, 24)
-        TabText.Font = Enum.Font.GothamSemibold
+        TabText.Font = Enum.Font.GothamBold
         TabText.Text = name
         TabText.TextColor3 = TextColor
-        TabText.TextSize = 14.000
+        TabText.TextSize = 15.000
         TabText.TextXAlignment = Enum.TextXAlignment.Left
         TabText.TextTransparency = 0.2
 
@@ -998,7 +999,7 @@ function library.new(library, name, theme)
                 BoxBG.Parent = TextboxBack
                 BoxBG.AnchorPoint = Vector2.new(1, 0.5)
                 BoxBG.Position = UDim2.new(1, -12, 0.5, 0)
-                BoxBG.BackgroundColor3 = Background
+                BoxBG.BackgroundColor3 = Color3.fromRGB(240, 240, 245)
                 BoxBG.BorderSizePixel = 0
                 BoxBG.Size = UDim2.new(0, 100, 0, 28)
                 BoxBG.AutoButtonColor = false
@@ -1011,12 +1012,20 @@ function library.new(library, name, theme)
                 BoxBGC.Name = "BoxBGC"
                 BoxBGC.Parent = BoxBG
 
+                local BoxStroke = Instance.new("UIStroke")
+                BoxStroke.Parent = BoxBG
+                BoxStroke.Color = TextColor
+                BoxStroke.Transparency = 0.85
+                BoxStroke.Thickness = 1
+                BoxStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+                BoxStroke.LineJoinMode = Enum.LineJoinMode.Round
+
                 TextBox.Parent = BoxBG
                 TextBox.BackgroundColor3 = TextColor
                 TextBox.BackgroundTransparency = 1.000
                 TextBox.BorderSizePixel = 0
                 TextBox.Size = UDim2.new(1, 0, 1, 0)
-                TextBox.Font = Enum.Font.Gotham
+                TextBox.Font = Enum.Font.GothamSemibold
                 TextBox.Text = default
                 TextBox.TextColor3 = TextColor
                 TextBox.TextSize = 14.000
@@ -1031,12 +1040,17 @@ function library.new(library, name, theme)
                 TextboxBackP.Parent = TextboxBack
                 TextboxBackP.PaddingRight = UDim.new(0, 12)
 
+                TextBox.Focused:Connect(function()
+                    services.TweenService:Create(BoxStroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(0, 122, 255), Transparency = 0}):Play()
+                end)
+
                 TextBox.FocusLost:Connect(function()
                     if TextBox.Text == "" then
                         TextBox.Text = default
                     end
                     library.flags[flag] = TextBox.Text
                     callback(TextBox.Text)
+                    services.TweenService:Create(BoxStroke, TweenInfo.new(0.2), {Color = TextColor, Transparency = 0.85}):Play()
                 end)
 
                 TextBox:GetPropertyChangedSignal("TextBounds"):Connect(function()
