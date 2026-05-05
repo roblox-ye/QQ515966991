@@ -67,6 +67,9 @@ function switchTab(new)
     local old = library.currentTab
     if old == nil then
         new[2].Visible = true
+        new[2].Position = UDim2.new(0, 0, 0, 15)
+        services.TweenService:Create(new[2], TweenInfo.new(0.35, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Position = UDim2.new(0, 0, 0, 0)}):Play()
+        
         library.currentTab = new
         services.TweenService:Create(new[1], TweenInfo.new(0.1), {ImageTransparency = 0}):Play()
         services.TweenService:Create(new[1].TabText, TweenInfo.new(0.1), {TextTransparency = 0}):Play()
@@ -89,6 +92,8 @@ function switchTab(new)
 
     old[2].Visible = false
     new[2].Visible = true
+    new[2].Position = UDim2.new(0, 0, 0, 15)
+    services.TweenService:Create(new[2], TweenInfo.new(0.35, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Position = UDim2.new(0, 0, 0, 0)}):Play()
 
     task.wait(0.1)
 
@@ -240,13 +245,6 @@ function library.new(library, name, theme)
     getgenv().CurrentUIWidth = 572
     getgenv().CurrentUIHeight = 353
 
-    local uiScale = CloudMain:FindFirstChild("YeUIScale")
-    if not uiScale then
-        uiScale = Instance.new("UIScale")
-        uiScale.Name = "YeUIScale"
-        uiScale.Parent = CloudMain
-    end
-
     local function toggleui()
         local TS = game:GetService("TweenService")
         
@@ -266,10 +264,10 @@ function library.new(library, name, theme)
         if dropShadow then dropShadow.Visible = false end
         
         if isOpening then
+            CloudMain.Position = UDim2.new(0.5, 0, 1.5, 0) 
             CloudMain.Visible = true
-            uiScale.Scale = 0.92
             
-            local openTween = TS:Create(uiScale, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = 1})
+            local openTween = TS:Create(CloudMain, TweenInfo.new(0.45, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Position = UDim2.new(0.5, 0, 0.4, 0)})
             table.insert(_G.activeUITweens, openTween)
             
             openTween.Completed:Once(function()
@@ -279,7 +277,7 @@ function library.new(library, name, theme)
             
             openTween:Play()
         else
-            local closeTween = TS:Create(uiScale, TweenInfo.new(0.2, Enum.EasingStyle.Sine, Enum.EasingDirection.In), {Scale = 0.95})
+            local closeTween = TS:Create(CloudMain, TweenInfo.new(0.35, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {Position = UDim2.new(0.5, 0, 1.5, 0)})
             table.insert(_G.activeUITweens, closeTween)
             
             closeTween.Completed:Once(function() 
@@ -580,16 +578,18 @@ function library.new(library, name, theme)
 
             SectionToggle.MouseButton1Click:Connect(function()
                 open = not open
-                Section.Size = UDim2.new(0.981000006, 0, 0, open and 36 + ObjsL.AbsoluteContentSize.Y + 8 or 36)
-                SectionOpened.ImageTransparency = (open and 0 or 1)
-                SectionOpen.ImageTransparency = (open and 1 or 0)
+                local targetSize = UDim2.new(0.981000006, 0, 0, open and 36 + ObjsL.AbsoluteContentSize.Y + 8 or 36)
+                services.TweenService:Create(Section, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Size = targetSize}):Play()
+                services.TweenService:Create(SectionOpened, TweenInfo.new(0.2), {ImageTransparency = (open and 0 or 1)}):Play()
+                services.TweenService:Create(SectionOpen, TweenInfo.new(0.2), {ImageTransparency = (open and 1 or 0)}):Play()
             end)
 
             ObjsL:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
                 if not open then
                     return
                 end
-                Section.Size = UDim2.new(0.981000006, 0, 0, 36 + ObjsL.AbsoluteContentSize.Y + 8)
+                local targetSize = UDim2.new(0.981000006, 0, 0, 36 + ObjsL.AbsoluteContentSize.Y + 8)
+                services.TweenService:Create(Section, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Size = targetSize}):Play()
             end)
 
             local section = {}
@@ -1134,7 +1134,7 @@ function library.new(library, name, theme)
                 SliderBar.Position = UDim2.new(1, -88, 0.5, 0)
                 SliderBar.BackgroundColor3 = Background
                 SliderBar.BorderSizePixel = 0
-                SliderBar.Size = UDim2.new(0, 130, 0, 6)
+                SliderBar.Size = UDim2.new(0, 130, 0, 10) 
 
                 SliderBarC.CornerRadius = UDim.new(1, 0)
                 SliderBarC.Name = "SliderBarC"
