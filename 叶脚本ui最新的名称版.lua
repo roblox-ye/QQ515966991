@@ -7,6 +7,10 @@ local ToggleUI = true
 library.currentTab = nil
 library.flags = {}
 
+if _G.activeUITweens == nil then
+    _G.activeUITweens = {}
+end
+
 local services = setmetatable({}, {
     __index = function(t, k)
         return game.GetService(game, k)
@@ -147,8 +151,6 @@ function library.new(library, name, theme)
     NameTransparency = 0
 
     local dogent = Instance.new("ScreenGui")
-    
-    -- 改回最基础、性能最好的 Frame 容器
     local CloudMain = Instance.new("Frame") 
     local TabMain = Instance.new("Frame")
     local MainC = Instance.new("UICorner")
@@ -235,9 +237,59 @@ function library.new(library, name, theme)
     getgenv().CurrentUIWidth = 572
     getgenv().CurrentUIHeight = 353
 
-    -- 极致性能优化：移除所有复杂的缩放补间动画，直接瞬发显示/隐藏
+    local uiScale = CloudMain:FindFirstChild("YeUIScale")
+    if not uiScale then
+        uiScale = Instance.new("UIScale")
+        uiScale.Name = "YeUIScale"
+        uiScale.Parent = CloudMain
+    end
+
+    -- 核心优化：高弹性动画，零开销切换
     local function toggleui()
-        CloudMain.Visible = not CloudMain.Visible
+        local TS = game:GetService("TweenService")
+        
+        for _, twn in ipairs(_G.activeUITweens) do
+            if twn then pcall(function() twn:Cancel() end) end
+        end
+        table.clear(_G.activeUITweens)
+        
+        local isOpening = not CloudMain.Visible
+        
+        if isOpening then
+            uiScale.Scale = 0.85
+            CloudMain.BackgroundTransparency = 1
+            DropShadow.ImageTransparency = 1
+            CloudMain.Visible = true
+            
+            -- Back Easing 营造果冻弹性高级感
+            local openTween = TS:Create(uiScale, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = 1})
+            local fadeTween = TS:Create(CloudMain, TweenInfo.new(0.2, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {BackgroundTransparency = 0.2})
+            local shadowTween = TS:Create(DropShadow, TweenInfo.new(0.2, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {ImageTransparency = 0.7})
+            
+            table.insert(_G.activeUITweens, openTween)
+            table.insert(_G.activeUITweens, fadeTween)
+            table.insert(_G.activeUITweens, shadowTween)
+            
+            openTween:Play()
+            fadeTween:Play()
+            shadowTween:Play()
+        else
+            local closeTween = TS:Create(uiScale, TweenInfo.new(0.2, Enum.EasingStyle.Sine, Enum.EasingDirection.In), {Scale = 0.9})
+            local fadeTween = TS:Create(CloudMain, TweenInfo.new(0.15, Enum.EasingStyle.Sine, Enum.EasingDirection.In), {BackgroundTransparency = 1})
+            local shadowTween = TS:Create(DropShadow, TweenInfo.new(0.15, Enum.EasingStyle.Sine, Enum.EasingDirection.In), {ImageTransparency = 1})
+            
+            table.insert(_G.activeUITweens, closeTween)
+            table.insert(_G.activeUITweens, fadeTween)
+            table.insert(_G.activeUITweens, shadowTween)
+            
+            closeTween.Completed:Once(function() 
+                CloudMain.Visible = false 
+            end)
+            
+            closeTween:Play()
+            fadeTween:Play()
+            shadowTween:Play()
+        end
     end
 
     TabMain.Name = "TabMain"
