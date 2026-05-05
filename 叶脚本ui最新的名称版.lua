@@ -246,38 +246,65 @@ function library.new(library, name, theme)
     local function toggleui()
         local TS = game:GetService("TweenService")
         
-        for _, twn in ipairs(_G.activeUITweens) do
-            if twn then pcall(function() twn:Cancel() end) end
-        end
-        table.clear(_G.activeUITweens)
-        
-        local mainStroke = CloudMain:FindFirstChild("RainbowStroke")
+        local oldClone = dogent:FindFirstChild("YeTransitionClone")
+        if oldClone then oldClone:Destroy() end
         
         if not CloudMain.Visible then
-            CloudMain.Visible = true
-            uiScale.Scale = 0.5 
+            local clone = CloudMain:Clone()
+            clone.Name = "YeTransitionClone"
+            clone.Parent = dogent
+            clone.Visible = true
             
-            if mainStroke then mainStroke.Enabled = false end 
+            for _, obj in ipairs(clone:GetDescendants()) do
+                if obj:IsA("ScrollingFrame") then
+                    local real = CloudMain:FindFirstChild(obj.Name, true)
+                    if real then obj.CanvasPosition = real.CanvasPosition end
+                end
+            end
             
-            local openScale = TS:Create(uiScale, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = 1})
-            table.insert(_G.activeUITweens, openScale)
+            local cloneStroke = clone:FindFirstChild("RainbowStroke")
+            if cloneStroke then cloneStroke:Destroy() end
             
-            openScale.Completed:Once(function()
-                if mainStroke and CloudMain.Visible then mainStroke.Enabled = true end
+            local cloneScale = clone:FindFirstChild("YeUIScale") or Instance.new("UIScale", clone)
+            cloneScale.Scale = 0.5
+            
+            local openTween = TS:Create(cloneScale, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = 1})
+            
+            openTween.Completed:Once(function()
+                if clone then clone:Destroy() end
+                uiScale.Scale = 1 
+                CloudMain.Visible = true 
             end)
             
-            openScale:Play()
+            openTween:Play()
         else
-            if mainStroke then mainStroke.Enabled = false end 
+            local clone = CloudMain:Clone()
+            clone.Name = "YeTransitionClone"
+            clone.Parent = dogent
+            clone.Visible = true
             
-            local closeScale = TS:Create(uiScale, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Scale = 0.5})
-            table.insert(_G.activeUITweens, closeScale)
+            for _, obj in ipairs(clone:GetDescendants()) do
+                if obj:IsA("ScrollingFrame") then
+                    local real = CloudMain:FindFirstChild(obj.Name, true)
+                    if real then obj.CanvasPosition = real.CanvasPosition end
+                end
+            end
             
-            closeScale.Completed:Once(function() 
-                CloudMain.Visible = false 
+            local cloneStroke = clone:FindFirstChild("RainbowStroke")
+            if cloneStroke then cloneStroke:Destroy() end
+            
+            CloudMain.Visible = false
+            
+            local cloneScale = clone:FindFirstChild("YeUIScale") or Instance.new("UIScale", clone)
+            cloneScale.Scale = 1
+            
+            local closeTween = TS:Create(cloneScale, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Scale = 0.5})
+            
+            closeTween.Completed:Once(function()
+                if clone then clone:Destroy() end
             end)
             
-            closeScale:Play()
+            closeTween:Play()
         end
     end
 
@@ -355,8 +382,7 @@ function library.new(library, name, theme)
     SBG.Parent = SB
 
     TabBtnsL:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-        local scaleFactor = math.max(uiScale.Scale, 0.01)
-        TabBtns.CanvasSize = UDim2.new(0, 0, 0, (TabBtnsL.AbsoluteContentSize.Y / scaleFactor) + 18)
+        TabBtns.CanvasSize = UDim2.new(0, 0, 0, TabBtnsL.AbsoluteContentSize.Y + 18)
     end)
 
     Open.Name = "Open"
@@ -480,8 +506,7 @@ function library.new(library, name, theme)
         end
 
         TabL:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-            local scaleFactor = math.max(uiScale.Scale, 0.01)
-            Tab.CanvasSize = UDim2.new(0, 0, 0, (TabL.AbsoluteContentSize.Y / scaleFactor) + 8)
+            Tab.CanvasSize = UDim2.new(0, 0, 0, TabL.AbsoluteContentSize.Y + 8)
         end)
 
         local tab = {}
@@ -556,16 +581,14 @@ function library.new(library, name, theme)
 
             local open = TabVal
             if TabVal ~= false then
-                local scaleFactor = math.max(uiScale.Scale, 0.01)
-                Section.Size = UDim2.new(0.981000006, 0, 0, open and 36 + (ObjsL.AbsoluteContentSize.Y / scaleFactor) + 8 or 36)
+                Section.Size = UDim2.new(0.981000006, 0, 0, open and 36 + ObjsL.AbsoluteContentSize.Y + 8 or 36)
                 SectionOpened.ImageTransparency = (open and 0 or 1)
                 SectionOpen.ImageTransparency = (open and 1 or 0)
             end
 
             SectionToggle.MouseButton1Click:Connect(function()
                 open = not open
-                local scaleFactor = math.max(uiScale.Scale, 0.01)
-                Section.Size = UDim2.new(0.981000006, 0, 0, open and 36 + (ObjsL.AbsoluteContentSize.Y / scaleFactor) + 8 or 36)
+                Section.Size = UDim2.new(0.981000006, 0, 0, open and 36 + ObjsL.AbsoluteContentSize.Y + 8 or 36)
                 SectionOpened.ImageTransparency = (open and 0 or 1)
                 SectionOpen.ImageTransparency = (open and 1 or 0)
             end)
@@ -574,8 +597,7 @@ function library.new(library, name, theme)
                 if not open then
                     return
                 end
-                local scaleFactor = math.max(uiScale.Scale, 0.01)
-                Section.Size = UDim2.new(0.981000006, 0, 0, 36 + (ObjsL.AbsoluteContentSize.Y / scaleFactor) + 8)
+                Section.Size = UDim2.new(0.981000006, 0, 0, 36 + ObjsL.AbsoluteContentSize.Y + 8)
             end)
 
             local section = {}
@@ -1311,8 +1333,8 @@ function library.new(library, name, theme)
                         setAllVisible()
                     end
                     DropdownOpen.Text = (open and "-" or "+")
-                    local scaleFactor = math.max(uiScale.Scale, 0.01)
-                    DropdownModule.Size = UDim2.new(0, 428, 0, (open and (DropdownModuleL.AbsoluteContentSize.Y / scaleFactor) + 4 or 38))
+                    DropdownModule.Size =
+                        UDim2.new(0, 428, 0, (open and DropdownModuleL.AbsoluteContentSize.Y + 4 or 38))
                 end
 
                 DropdownOpen.MouseButton1Click:Connect(ToggleDropVis)
@@ -1334,8 +1356,7 @@ function library.new(library, name, theme)
                     if not open then
                         return
                     end
-                    local scaleFactor = math.max(uiScale.Scale, 0.01)
-                    DropdownModule.Size = UDim2.new(0, 428, 0, (DropdownModuleL.AbsoluteContentSize.Y / scaleFactor) + 4)
+                    DropdownModule.Size = UDim2.new(0, 428, 0, (DropdownModuleL.AbsoluteContentSize.Y + 4))
                 end)
 
                 local funcs = {}
