@@ -102,7 +102,11 @@ function drag(frame, hold)
 
     local function update(input)
         local delta = input.Position - dragStart
-        frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        local newPos = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        frame.Position = newPos
+        if frame.Name == "CloudMain" then
+            getgenv().YeUI_TargetPos = newPos
+        end
     end
 
     hold.InputBegan:Connect(function(input)
@@ -236,7 +240,9 @@ function library.new(library, name, theme)
     getgenv().CurrentUIWidth = 572
     getgenv().CurrentUIHeight = 353
 
-    getgenv().YeUI_SavedPos = UDim2.new(0.5, 0, 0.4, 0)
+    -- 这里直接写死最开始始的安全坐标，只允许在 drag 函数里去修改它
+    getgenv().YeUI_TargetPos = UDim2.new(0.5, 0, 0.4, 0)
+    getgenv().YeUI_State = "Open"
 
     local function toggleui()
         local TS = game:GetService("TweenService")
@@ -246,24 +252,29 @@ function library.new(library, name, theme)
         end
         table.clear(_G.activeUITweens)
         
-        if not CloudMain.Visible then
-            local targetPos = getgenv().YeUI_SavedPos or UDim2.new(0.5, 0, 0.4, 0)
+        local target = getgenv().YeUI_TargetPos
+        
+        if getgenv().YeUI_State == "Closed" then
+            getgenv().YeUI_State = "Open"
             
-            CloudMain.Position = UDim2.new(targetPos.X.Scale, targetPos.X.Offset, 1.5, 0)
-            CloudMain.Visible = true
+            if not CloudMain.Visible then
+                CloudMain.Position = UDim2.new(target.X.Scale, target.X.Offset, 1.5, 0)
+                CloudMain.Visible = true
+            end
             
-            local openTween = TS:Create(CloudMain, TweenInfo.new(0.45, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Position = targetPos})
+            local openTween = TS:Create(CloudMain, TweenInfo.new(0.45, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Position = target})
             table.insert(_G.activeUITweens, openTween)
             openTween:Play()
         else
-            getgenv().YeUI_SavedPos = CloudMain.Position
-            local currentPos = CloudMain.Position
+            getgenv().YeUI_State = "Closed"
             
-            local closeTween = TS:Create(CloudMain, TweenInfo.new(0.35, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {Position = UDim2.new(currentPos.X.Scale, currentPos.X.Offset, 1.5, 0)})
+            local closeTween = TS:Create(CloudMain, TweenInfo.new(0.35, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {Position = UDim2.new(target.X.Scale, target.X.Offset, 1.5, 0)})
             table.insert(_G.activeUITweens, closeTween)
             
             closeTween.Completed:Once(function() 
-                CloudMain.Visible = false 
+                if getgenv().YeUI_State == "Closed" then
+                    CloudMain.Visible = false 
+                end
             end)
             closeTween:Play()
         end
