@@ -150,7 +150,7 @@ function library.new(library, name, theme)
     NameTransparency = 0
 
     local dogent = Instance.new("ScreenGui")
-    local CloudMain = Instance.new("Frame") 
+    local CloudMain = Instance.new("CanvasGroup") 
     local TabMain = Instance.new("Frame")
     local MainC = Instance.new("UICorner")
     local SB = Instance.new("Frame")
@@ -243,7 +243,7 @@ function library.new(library, name, theme)
         uiScale.Parent = CloudMain
     end
 
-    local function toggleui()
+        local function toggleui()
         local TS = game:GetService("TweenService")
         
         for _, twn in ipairs(_G.activeUITweens) do
@@ -252,22 +252,35 @@ function library.new(library, name, theme)
         table.clear(_G.activeUITweens)
         
         if not CloudMain.Visible then
-            uiScale.Scale = 0.85
             CloudMain.Visible = true
+            uiScale.Scale = 0.9
+            CloudMain.GroupTransparency = 1
+            local openScale = TS:Create(uiScale, TweenInfo.new(0.4, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Scale = 1})
+            local openFade = TS:Create(CloudMain, TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {GroupTransparency = 0})
             
-            local openTween = TS:Create(uiScale, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = 1})
-            table.insert(_G.activeUITweens, openTween)
-            openTween:Play()
+            table.insert(_G.activeUITweens, openScale)
+            table.insert(_G.activeUITweens, openFade)
+            
+            openScale:Play()
+            openFade:Play()
         else
-            local closeTween = TS:Create(uiScale, TweenInfo.new(0.2, Enum.EasingStyle.Sine, Enum.EasingDirection.In), {Scale = 0.85})
-            table.insert(_G.activeUITweens, closeTween)
+            local closeScale = TS:Create(uiScale, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {Scale = 0.9})
+            local closeFade = TS:Create(CloudMain, TweenInfo.new(0.2, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {GroupTransparency = 1})
             
-            closeTween.Completed:Once(function() 
-                CloudMain.Visible = false 
+            table.insert(_G.activeUITweens, closeScale)
+            table.insert(_G.activeUITweens, closeFade)
+            
+            closeFade.Completed:Once(function() 
+                if CloudMain.GroupTransparency == 1 then
+                    CloudMain.Visible = false 
+                end
             end)
-            closeTween:Play()
+            
+            closeScale:Play()
+            closeFade:Play()
         end
     end
+
 
     TabMain.Name = "TabMain"
     TabMain.Parent = CloudMain
@@ -1448,4 +1461,4 @@ function library.new(library, name, theme)
 end
 
 _G.YeScript_UI_V7 = library
-return library
+return library 
