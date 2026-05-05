@@ -141,7 +141,6 @@ function library.new(library, name, theme)
         
     local TweenService = game:GetService("TweenService")
 
-    -- Ins风白色玻璃感配色方案
     MainColor = Color3.fromRGB(245, 245, 245)
     Background = Color3.fromRGB(255, 255, 255)
     zyColor = Color3.fromRGB(255, 255, 255)
@@ -244,7 +243,6 @@ function library.new(library, name, theme)
         uiScale.Parent = CloudMain
     end
 
-    -- 核心优化：高弹性动画，零开销切换
     local function toggleui()
         local TS = game:GetService("TweenService")
         
@@ -253,42 +251,21 @@ function library.new(library, name, theme)
         end
         table.clear(_G.activeUITweens)
         
-        local isOpening = not CloudMain.Visible
-        
-        if isOpening then
+        if not CloudMain.Visible then
             uiScale.Scale = 0.85
-            CloudMain.BackgroundTransparency = 1
-            DropShadow.ImageTransparency = 1
             CloudMain.Visible = true
             
-            -- Back Easing 营造果冻弹性高级感
             local openTween = TS:Create(uiScale, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = 1})
-            local fadeTween = TS:Create(CloudMain, TweenInfo.new(0.2, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {BackgroundTransparency = 0.2})
-            local shadowTween = TS:Create(DropShadow, TweenInfo.new(0.2, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {ImageTransparency = 0.7})
-            
             table.insert(_G.activeUITweens, openTween)
-            table.insert(_G.activeUITweens, fadeTween)
-            table.insert(_G.activeUITweens, shadowTween)
-            
             openTween:Play()
-            fadeTween:Play()
-            shadowTween:Play()
         else
-            local closeTween = TS:Create(uiScale, TweenInfo.new(0.2, Enum.EasingStyle.Sine, Enum.EasingDirection.In), {Scale = 0.9})
-            local fadeTween = TS:Create(CloudMain, TweenInfo.new(0.15, Enum.EasingStyle.Sine, Enum.EasingDirection.In), {BackgroundTransparency = 1})
-            local shadowTween = TS:Create(DropShadow, TweenInfo.new(0.15, Enum.EasingStyle.Sine, Enum.EasingDirection.In), {ImageTransparency = 1})
-            
+            local closeTween = TS:Create(uiScale, TweenInfo.new(0.2, Enum.EasingStyle.Sine, Enum.EasingDirection.In), {Scale = 0.85})
             table.insert(_G.activeUITweens, closeTween)
-            table.insert(_G.activeUITweens, fadeTween)
-            table.insert(_G.activeUITweens, shadowTween)
             
             closeTween.Completed:Once(function() 
                 CloudMain.Visible = false 
             end)
-            
             closeTween:Play()
-            fadeTween:Play()
-            shadowTween:Play()
         end
     end
 
@@ -297,13 +274,13 @@ function library.new(library, name, theme)
     TabMain.BackgroundColor3 = TextColor
     TabMain.BackgroundTransparency = 1.000
     TabMain.Position = UDim2.new(0.217000037, 0, 0, 3)
-    TabMain.Size = UDim2.new(0, 448, 0, 353)
+    TabMain.Size = UDim2.new(1, -124, 1, -3)
     
     SB.Name = "SB"
     SB.Parent = CloudMain
     SB.BackgroundColor3 = TextColor
     SB.BorderColor3 = MainColor
-    SB.Size = UDim2.new(0, 8, 0, 353)
+    SB.Size = UDim2.new(0, 8, 1, 0)
     SB.Transparency = 0.700
 
     SBC.CornerRadius = UDim.new(0, 12)
@@ -317,7 +294,7 @@ function library.new(library, name, theme)
     Side.BorderSizePixel = 0
     Side.ClipsDescendants = true
     Side.Position = UDim2.new(1, 0, 0, 0)
-    Side.Size = UDim2.new(0, 110, 0, 353)
+    Side.Size = UDim2.new(0, 110, 1, 0)
     Side.Transparency = 0.700
 
     SideG.Color = ColorSequence.new {ColorSequenceKeypoint.new(0.00, zyColor), ColorSequenceKeypoint.new(1.00, zyColor)}
@@ -332,7 +309,7 @@ function library.new(library, name, theme)
     TabBtns.BackgroundTransparency = 1.000
     TabBtns.BorderSizePixel = 0
     TabBtns.Position = UDim2.new(0, 0, 0.0973535776, 0)
-    TabBtns.Size = UDim2.new(0, 110, 0, 318)
+    TabBtns.Size = UDim2.new(1, 0, 1, -35)
     TabBtns.CanvasSize = UDim2.new(0, 0, 1, 0)
     TabBtns.ScrollBarThickness = 0
 
@@ -1472,3 +1449,5 @@ end
 
 _G.YeScript_UI_V7 = library
 return library
+
+```
