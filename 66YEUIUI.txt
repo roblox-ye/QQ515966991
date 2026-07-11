@@ -187,7 +187,7 @@ function library.new(library, name, theme)
     local uiScale = Instance.new("UIScale")
     uiScale.Name = "YeUIScale"
     uiScale.Parent = CloudMain
-    uiScale.Scale = 0 -- 初始隐藏，准备开场动画
+    uiScale.Scale = 0
 
     UICornerMain.Parent = CloudMain
     UICornerMain.CornerRadius = UDim.new(0, 14)
