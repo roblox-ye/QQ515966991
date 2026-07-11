@@ -464,7 +464,7 @@ function library.new(library, name, theme)
             local SectionOpened = Instance.new("TextLabel")
             local SectionToggle = Instance.new("ImageButton")
             local Objs = Instance.new("Frame")
-            local ObjsL = Instance.new("UIListLayout")
+            local ObjsL = Instance.new("UIListLayout")             
             Section.Name = "Section"
             Section.Parent = Tab
             Section.BackgroundColor3 = zyColor
@@ -472,6 +472,7 @@ function library.new(library, name, theme)
             Section.ClipsDescendants = true
             Section.Size = UDim2.new(1, -10, 0, 32)
             Section.AutomaticSize = Enum.AutomaticSize.Y
+
             SectionC.CornerRadius = UDim.new(0, 8)
             SectionC.Parent = Section
 
@@ -516,9 +517,7 @@ function library.new(library, name, theme)
             Objs.BackgroundTransparency = 1
             Objs.Position = UDim2.new(0, 4, 0, 32)
             Objs.Size = UDim2.new(1, -8, 0, 0)
-            Objs.AutomaticSize = Enum.AutomaticSize.Y -- 核心改动：内部框架自动包容内容
-            
-            -- 给内部预留 8 像素的死角边距，防止 Stroke 描边被切
+            Objs.AutomaticSize = Enum.AutomaticSize.Y
             local ObjsPadding = Instance.new("UIPadding")
             ObjsPadding.Parent = Objs
             ObjsPadding.PaddingBottom = UDim.new(0, 8)
@@ -1031,7 +1030,7 @@ function library.new(library, name, theme)
                 DropdownModule.BackgroundTransparency = 1.000
                 DropdownModule.ClipsDescendants = true
                 DropdownModule.Size = UDim2.new(1, -4, 0, 30)
-            DropdownModule.AutomaticSize = Enum.AutomaticSize.Y
+                DropdownModule.AutomaticSize = Enum.AutomaticSize.Y
 
                 DropdownTop.Name = "DropdownTop"
                 DropdownTop.Parent = DropdownModule
@@ -1190,7 +1189,7 @@ function library.new(library, name, theme)
             local newHeight = math.clamp(startSize.Y.Offset + delta.Y, 250, 700)
             CloudMain.Size = UDim2.new(0, newWidth, 0, newHeight)
         end
-    end)    
+    end)
     TS:Create(uiScale, TweenInfo.new(1.2, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Scale = 0.91}):Play()
 
     return window
