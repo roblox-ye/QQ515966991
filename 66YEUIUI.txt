@@ -204,7 +204,161 @@ function library.new(library, name, theme)
     CloseBtn.TextColor3 = TextColor
     CloseBtn.TextSize = 14
     CloseBtn.ZIndex = 10
-    CloseBtn.MouseButton1Click:Connect(function() UiDestroy() end)
+    local ConfirmOverlay = Instance.new("Frame")
+    ConfirmOverlay.Name = "YeConfirmOverlay"
+    ConfirmOverlay.Parent = CloudMain
+    ConfirmOverlay.Size = UDim2.new(1, 0, 1, 0)
+    ConfirmOverlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    ConfirmOverlay.BackgroundTransparency = 1
+    ConfirmOverlay.Visible = false
+    ConfirmOverlay.ZIndex = 99 
+    ConfirmOverlay.Active = true 
+
+    local ConfirmOverlayCorner = Instance.new("UICorner")
+    ConfirmOverlayCorner.CornerRadius = UDim.new(0, 14)
+    ConfirmOverlayCorner.Parent = ConfirmOverlay
+
+    local ConfirmMain = Instance.new("Frame")
+    ConfirmMain.Name = "YeConfirmMain"
+    ConfirmMain.Parent = ConfirmOverlay
+    ConfirmMain.AnchorPoint = Vector2.new(0.5, 0.5)
+    ConfirmMain.Position = UDim2.new(0.5, 0, 0.5, 0)
+    ConfirmMain.Size = UDim2.new(0, 250, 0, 120)
+    ConfirmMain.BackgroundColor3 = Background
+    ConfirmMain.BackgroundTransparency = 1
+    ConfirmMain.ZIndex = 100
+
+    local ConfirmCorner = Instance.new("UICorner")
+    ConfirmCorner.CornerRadius = UDim.new(0, 12)
+    ConfirmCorner.Parent = ConfirmMain
+
+    local ConfirmStroke = Instance.new("UIStroke")
+    ConfirmStroke.Parent = ConfirmMain
+    ConfirmStroke.Thickness = 1.5
+    ConfirmStroke.Color = Color3.fromRGB(255, 255, 255)
+    ConfirmStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    ConfirmStroke.Transparency = 1
+    
+    local ConfirmStrokeGradient = Instance.new("UIGradient")
+    ConfirmStrokeGradient.Color = ColorSequence.new{ColorSequenceKeypoint.new(0, Color3.fromRGB(150, 200, 255)), ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 180, 200))}
+    ConfirmStrokeGradient.Rotation = 45
+    ConfirmStrokeGradient.Parent = ConfirmStroke
+
+    local ConfirmTitle = Instance.new("TextLabel")
+    ConfirmTitle.Parent = ConfirmMain
+    ConfirmTitle.BackgroundTransparency = 1
+    ConfirmTitle.Position = UDim2.new(0, 0, 0, 25)
+    ConfirmTitle.Size = UDim2.new(1, 0, 0, 30)
+    ConfirmTitle.Font = Enum.Font.GothamBold
+    ConfirmTitle.Text = "确认关闭UI界面吗？"
+    ConfirmTitle.TextColor3 = TextColor
+    ConfirmTitle.TextSize = 14
+    ConfirmTitle.TextTransparency = 1
+    ConfirmTitle.ZIndex = 100
+
+    local BtnYes = Instance.new("TextButton")
+    BtnYes.Parent = ConfirmMain
+    BtnYes.BackgroundColor3 = zyColor
+    BtnYes.Position = UDim2.new(0, 25, 0, 70)
+    BtnYes.Size = UDim2.new(0, 90, 0, 32)
+    BtnYes.Font = Enum.Font.GothamBold
+    BtnYes.Text = "是的"
+    BtnYes.TextColor3 = Color3.fromRGB(255, 100, 100) 
+    BtnYes.TextSize = 13
+    BtnYes.BackgroundTransparency = 1
+    BtnYes.TextTransparency = 1
+    BtnYes.ZIndex = 100
+    BtnYes.AutoButtonColor = false
+
+    local BtnYesC = Instance.new("UICorner")
+    BtnYesC.CornerRadius = UDim.new(0, 6)
+    BtnYesC.Parent = BtnYes
+    
+    local BtnYesStroke = Instance.new("UIStroke")
+    BtnYesStroke.Parent = BtnYes
+    BtnYesStroke.Color = Color3.fromRGB(0, 0, 0)
+    BtnYesStroke.Transparency = 1
+    BtnYesStroke.Thickness = 1
+    BtnYesStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+
+    local BtnNo = Instance.new("TextButton")
+    BtnNo.Parent = ConfirmMain
+    BtnNo.BackgroundColor3 = zyColor
+    BtnNo.Position = UDim2.new(1, -115, 0, 70)
+    BtnNo.Size = UDim2.new(0, 90, 0, 32)
+    BtnNo.Font = Enum.Font.GothamBold
+    BtnNo.Text = "不"
+    BtnNo.TextColor3 = TextColor
+    BtnNo.TextSize = 13
+    BtnNo.BackgroundTransparency = 1
+    BtnNo.TextTransparency = 1
+    BtnNo.ZIndex = 100
+    BtnNo.AutoButtonColor = false
+
+    local BtnNoC = Instance.new("UICorner")
+    BtnNoC.CornerRadius = UDim.new(0, 6)
+    BtnNoC.Parent = BtnNo
+    
+    local BtnNoStroke = Instance.new("UIStroke")
+    BtnNoStroke.Parent = BtnNo
+    BtnNoStroke.Color = Color3.fromRGB(0, 0, 0)
+    BtnNoStroke.Transparency = 1
+    BtnNoStroke.Thickness = 1
+    BtnNoStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+
+    local ConfirmUIScale = Instance.new("UIScale")
+    ConfirmUIScale.Parent = ConfirmMain
+    ConfirmUIScale.Scale = 0.8
+
+    local isConfirming = false
+
+    local function toggleConfirm(state)
+        if state then
+            ConfirmOverlay.Visible = true
+            isConfirming = true
+            TS:Create(ConfirmOverlay, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {BackgroundTransparency = 0.6}):Play()
+            TS:Create(ConfirmMain, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {BackgroundTransparency = 0.1}):Play()
+            TS:Create(ConfirmUIScale, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = 1}):Play()
+            TS:Create(ConfirmStroke, TweenInfo.new(0.3), {Transparency = 0}):Play()
+            TS:Create(ConfirmTitle, TweenInfo.new(0.3), {TextTransparency = 0}):Play()
+            TS:Create(BtnYes, TweenInfo.new(0.3), {BackgroundTransparency = interfaceTransparency, TextTransparency = 0}):Play()
+            TS:Create(BtnYesStroke, TweenInfo.new(0.3), {Transparency = 0.92}):Play()
+            TS:Create(BtnNo, TweenInfo.new(0.3), {BackgroundTransparency = interfaceTransparency, TextTransparency = 0}):Play()
+            TS:Create(BtnNoStroke, TweenInfo.new(0.3), {Transparency = 0.92}):Play()
+        else
+            isConfirming = false
+            TS:Create(ConfirmOverlay, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {BackgroundTransparency = 1}):Play()
+            TS:Create(ConfirmMain, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {BackgroundTransparency = 1}):Play()
+            TS:Create(ConfirmUIScale, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {Scale = 0.8}):Play()
+            TS:Create(ConfirmStroke, TweenInfo.new(0.2), {Transparency = 1}):Play()
+            TS:Create(ConfirmTitle, TweenInfo.new(0.2), {TextTransparency = 1}):Play()
+            TS:Create(BtnYes, TweenInfo.new(0.2), {BackgroundTransparency = 1, TextTransparency = 1}):Play()
+            TS:Create(BtnYesStroke, TweenInfo.new(0.2), {Transparency = 1}):Play()
+            TS:Create(BtnNo, TweenInfo.new(0.2), {BackgroundTransparency = 1, TextTransparency = 1}):Play()
+            local closeTween = TS:Create(BtnNoStroke, TweenInfo.new(0.2), {Transparency = 1})
+            closeTween:Play()
+            
+            closeTween.Completed:Once(function()
+                if not isConfirming then ConfirmOverlay.Visible = false end
+            end)
+        end
+    end
+
+    BtnYes.MouseButton1Click:Connect(function()
+        spawn(function() Ripple(BtnYes) end)
+        toggleConfirm(false)
+        task.wait(0.2) 
+        UiDestroy()
+    end)
+
+    BtnNo.MouseButton1Click:Connect(function()
+        spawn(function() Ripple(BtnNo) end)
+        toggleConfirm(false)
+    end)
+
+    CloseBtn.MouseButton1Click:Connect(function()
+        toggleConfirm(true)
+    end)
 
     DropShadowHolder.Name = "DropShadowHolder"
     DropShadowHolder.Parent = CloudMain
