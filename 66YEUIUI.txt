@@ -1468,7 +1468,7 @@ function library.new(library, name, theme)
         local lastSavedScale = UI_CONFIG.Scale
         local scaleSliderFuncs
         
-        scaleSliderFuncs = sec:Slider("整体界面缩放 (%)", "UIScaleSlider", math.floor(UI_CONFIG.Scale * 100), 10, 500, false, function(v)
+        scaleSliderFuncs = sec:Slider("整体界面缩放 (%)", "UIScaleSlider", math.floor(UI_CONFIG.Scale * 100), 10, 300, false, function(v)
             uiScale.Scale = v / 100
         end, function(v)
             local currentScale = v / 100
