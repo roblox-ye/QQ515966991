@@ -1,6 +1,10 @@
-repeat
-    task.wait()
-until game:IsLoaded()
+repeat task.wait() until game:IsLoaded()
+
+local HttpService = game:GetService("HttpService")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local CoreGui = game:GetService("CoreGui")
 
 local library = {} 
 local ToggleUI = true
@@ -18,6 +22,82 @@ local services = setmetatable({}, {
 })
 
 local mouse = services.Players.LocalPlayer:GetMouse()
+
+local IsPC = UserInputService.KeyboardEnabled and not UserInputService.TouchEnabled
+local DefaultScale = IsPC and 1.3 or 0.91
+
+local ConfigPath = "Ye_UI_Settings.json"
+
+local Palettes = {
+    ["默认静态 (Static)"] = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(150, 200, 255)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 180, 200))
+    }),
+    ["静态 - 清新绿"] = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(120, 255, 150)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(180, 255, 200))
+    }),
+    ["静态 - 极光紫"] = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(180, 100, 255)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(220, 150, 255))
+    }),
+    ["静态 - 玫瑰金"] = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 180, 150)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 220, 200))
+    }),
+    ["彩虹 (Rainbow)"] = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
+        ColorSequenceKeypoint.new(0.2, Color3.fromRGB(255, 255, 0)),
+        ColorSequenceKeypoint.new(0.4, Color3.fromRGB(0, 255, 0)),
+        ColorSequenceKeypoint.new(0.6, Color3.fromRGB(0, 255, 255)),
+        ColorSequenceKeypoint.new(0.8, Color3.fromRGB(0, 0, 255)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 0))
+    }),
+    ["赛博朋克 (Cyberpunk)"] = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 255, 255)),
+        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 0, 255)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 255, 255))
+    }),
+    ["冷峻蓝 (Cool Blue)"] = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 100, 255)),
+        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 200, 255)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 100, 255))
+    }),
+    ["暗黑红 (Dark Red)"] = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
+        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(100, 0, 0)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 0))
+    })
+}
+
+local PaletteNames = {
+    "默认静态 (Static)", "静态 - 清新绿", "静态 - 极光紫", "静态 - 玫瑰金",
+    "彩虹 (Rainbow)", "赛博朋克 (Cyberpunk)", "冷峻蓝 (Cool Blue)", "暗黑红 (Dark Red)"
+}
+
+local UI_CONFIG = {
+    Scale = DefaultScale,
+    MarqueeEnabled = false,
+    Palette = "默认静态 (Static)",
+    MarqueeSpeed = 1
+}
+
+if isfile and isfile(ConfigPath) then
+    pcall(function()
+        local data = HttpService:JSONDecode(readfile(ConfigPath))
+        for k, v in pairs(data) do
+            UI_CONFIG[k] = v
+        end
+    end)
+end
+
+local function SaveConfig()
+    if writefile then
+        pcall(function()
+            writefile(ConfigPath, HttpService:JSONEncode(UI_CONFIG))
+        end)
+    end
+end
 
 function Tween(obj, t, data)
     services.TweenService:Create(obj, TweenInfo.new(t[1], Enum.EasingStyle[t[2]], Enum.EasingDirection[t[3]]), data):Play()
@@ -187,7 +267,18 @@ function library.new(library, name, theme)
     local uiScale = Instance.new("UIScale")
     uiScale.Name = "YeUIScale"
     uiScale.Parent = CloudMain
-    uiScale.Scale = 0
+    uiScale.Scale = UI_CONFIG.Scale
+    
+    services.UserInputService.InputBegan:Connect(function(input, gpe)
+        if not gpe and input.KeyCode == Enum.KeyCode.S and services.UserInputService:IsKeyDown(Enum.KeyCode.LeftAlt) then
+            UI_CONFIG.Scale = DefaultScale
+            uiScale.Scale = DefaultScale
+            SaveConfig()
+            if getgenv().Ye_Notify then
+                getgenv().Ye_Notify("UI 救援", "界面缩放已重置为默认大小！", 3)
+            end
+        end
+    end)
 
     UICornerMain.Parent = CloudMain
     UICornerMain.CornerRadius = UDim.new(0, 14)
@@ -204,6 +295,7 @@ function library.new(library, name, theme)
     CloseBtn.TextColor3 = TextColor
     CloseBtn.TextSize = 14
     CloseBtn.ZIndex = 10
+    
     local ConfirmOverlay = Instance.new("Frame")
     ConfirmOverlay.Name = "YeConfirmOverlay"
     ConfirmOverlay.Parent = CloudMain
@@ -250,7 +342,7 @@ function library.new(library, name, theme)
     ConfirmTitle.Position = UDim2.new(0, 0, 0, 25)
     ConfirmTitle.Size = UDim2.new(1, 0, 0, 30)
     ConfirmTitle.Font = Enum.Font.GothamBold
-    ConfirmTitle.Text = "确认关闭UI界面吗？"
+    ConfirmTitle.Text = "确认执行此操作？"
     ConfirmTitle.TextColor3 = TextColor
     ConfirmTitle.TextSize = 14
     ConfirmTitle.TextTransparency = 1
@@ -269,17 +361,10 @@ function library.new(library, name, theme)
     BtnYes.TextTransparency = 1
     BtnYes.ZIndex = 100
     BtnYes.AutoButtonColor = false
-
-    local BtnYesC = Instance.new("UICorner")
-    BtnYesC.CornerRadius = UDim.new(0, 6)
-    BtnYesC.Parent = BtnYes
-    
-    local BtnYesStroke = Instance.new("UIStroke")
-    BtnYesStroke.Parent = BtnYes
+    Instance.new("UICorner", BtnYes).CornerRadius = UDim.new(0, 6)
+    local BtnYesStroke = Instance.new("UIStroke", BtnYes)
     BtnYesStroke.Color = Color3.fromRGB(0, 0, 0)
     BtnYesStroke.Transparency = 1
-    BtnYesStroke.Thickness = 1
-    BtnYesStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 
     local BtnNo = Instance.new("TextButton")
     BtnNo.Parent = ConfirmMain
@@ -294,25 +379,16 @@ function library.new(library, name, theme)
     BtnNo.TextTransparency = 1
     BtnNo.ZIndex = 100
     BtnNo.AutoButtonColor = false
-
-    local BtnNoC = Instance.new("UICorner")
-    BtnNoC.CornerRadius = UDim.new(0, 6)
-    BtnNoC.Parent = BtnNo
-    
-    local BtnNoStroke = Instance.new("UIStroke")
-    BtnNoStroke.Parent = BtnNo
+    Instance.new("UICorner", BtnNo).CornerRadius = UDim.new(0, 6)
+    local BtnNoStroke = Instance.new("UIStroke", BtnNo)
     BtnNoStroke.Color = Color3.fromRGB(0, 0, 0)
     BtnNoStroke.Transparency = 1
-    BtnNoStroke.Thickness = 1
-    BtnNoStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 
-    local ConfirmUIScale = Instance.new("UIScale")
-    ConfirmUIScale.Parent = ConfirmMain
+    local ConfirmUIScale = Instance.new("UIScale", ConfirmMain)
     ConfirmUIScale.Scale = 0.8
-
     local isConfirming = false
 
-    local function toggleConfirm(state)
+    local function toggleConfirmUI(state)
         if state then
             ConfirmOverlay.Visible = true
             isConfirming = true
@@ -337,27 +413,36 @@ function library.new(library, name, theme)
             TS:Create(BtnNo, TweenInfo.new(0.2), {BackgroundTransparency = 1, TextTransparency = 1}):Play()
             local closeTween = TS:Create(BtnNoStroke, TweenInfo.new(0.2), {Transparency = 1})
             closeTween:Play()
-            
-            closeTween.Completed:Once(function()
-                if not isConfirming then ConfirmOverlay.Visible = false end
-            end)
+            closeTween.Completed:Once(function() if not isConfirming then ConfirmOverlay.Visible = false end end)
         end
     end
 
-    BtnYes.MouseButton1Click:Connect(function()
-        spawn(function() Ripple(BtnYes) end)
-        toggleConfirm(false)
-        task.wait(0.2) 
-        UiDestroy()
-    end)
-
-    BtnNo.MouseButton1Click:Connect(function()
-        spawn(function() Ripple(BtnNo) end)
-        toggleConfirm(false)
-    end)
+    local activeYesConn, activeNoConn
+    local function ShowConfirm(title, yesCallback, noCallback)
+        ConfirmTitle.Text = title
+        if activeYesConn then activeYesConn:Disconnect() end
+        if activeNoConn then activeNoConn:Disconnect() end
+        
+        activeYesConn = BtnYes.MouseButton1Click:Connect(function()
+            spawn(function() Ripple(BtnYes) end)
+            toggleConfirmUI(false)
+            if yesCallback then yesCallback() end
+        end)
+        
+        activeNoConn = BtnNo.MouseButton1Click:Connect(function()
+            spawn(function() Ripple(BtnNo) end)
+            toggleConfirmUI(false)
+            if noCallback then noCallback() end
+        end)
+        
+        toggleConfirmUI(true)
+    end
 
     CloseBtn.MouseButton1Click:Connect(function()
-        toggleConfirm(true)
+        ShowConfirm("确认关闭UI界面吗？", function()
+            task.wait(0.2)
+            UiDestroy()
+        end)
     end)
 
     DropShadowHolder.Name = "DropShadowHolder"
@@ -378,6 +463,27 @@ function library.new(library, name, theme)
     DropShadow.ImageTransparency = 0.7
     DropShadow.ScaleType = Enum.ScaleType.Slice
     DropShadow.SliceCenter = Rect.new(49, 49, 450, 450)
+
+    local MainStroke = Instance.new("UIStroke")
+    MainStroke.Name = "RainbowStroke"
+    MainStroke.Parent = CloudMain
+    MainStroke.Thickness = 1.5
+    MainStroke.Color = Color3.fromRGB(255, 255, 255)
+    MainStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+
+    local MainStrokeGradient = Instance.new("UIGradient")
+    MainStrokeGradient.Color = Palettes[UI_CONFIG.Palette] or Palettes["默认静态 (Static)"]
+    MainStrokeGradient.Rotation = 45
+    MainStrokeGradient.Parent = MainStroke
+    
+    local marqueeConn = RunService.RenderStepped:Connect(function()
+        if UI_CONFIG.MarqueeEnabled then
+            local rot = (os.clock() * UI_CONFIG.MarqueeSpeed * 60) % 360
+            MainStrokeGradient.Rotation = rot
+        else
+            MainStrokeGradient.Rotation = 45
+        end
+    end)
 
     local function toggleui()
         if not _G.activeUITweens then _G.activeUITweens = {} end
@@ -448,13 +554,31 @@ function library.new(library, name, theme)
     SideG.Rotation = 90
     SideG.Parent = Side
 
+    ScriptTitle.Name = "ScriptTitle"
+    ScriptTitle.Parent = Side
+    ScriptTitle.BackgroundTransparency = 1.000
+    ScriptTitle.Position = UDim2.new(0, 8, 0, 8)
+    ScriptTitle.Size = UDim2.new(1, -16, 0, 18)
+    ScriptTitle.Font = Enum.Font.GothamBold
+    ScriptTitle.Text = name
+    ScriptTitle.TextColor3 = TextColor
+    ScriptTitle.TextSize = 13.000
+    ScriptTitle.TextXAlignment = Enum.TextXAlignment.Left
+
+    local UIGradientTitle = Instance.new("UIGradient")
+    UIGradientTitle.Color = ColorSequence.new{
+        ColorSequenceKeypoint.new(0.00, Color3.fromRGB(150, 200, 255)),
+        ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255, 180, 200))
+    }
+    UIGradientTitle.Parent = ScriptTitle
+
     TabBtns.Name = "TabBtns"
     TabBtns.Parent = Side
     TabBtns.Active = true
     TabBtns.BackgroundTransparency = 1.000
     TabBtns.BorderSizePixel = 0
-    TabBtns.Position = UDim2.new(0, 0, 0, 35)
-    TabBtns.Size = UDim2.new(1, 0, 1, -40)
+    TabBtns.Position = UDim2.new(0, 0, 0, 32) 
+    TabBtns.Size = UDim2.new(1, 0, 1, -36)
     TabBtns.ScrollBarThickness = 0
     TabBtns.CanvasSize = UDim2.new(0, 0, 0, 0) 
     TabBtns.AutomaticCanvasSize = Enum.AutomaticSize.Y
@@ -467,24 +591,6 @@ function library.new(library, name, theme)
     TabBtnsL.Parent = TabBtns
     TabBtnsL.SortOrder = Enum.SortOrder.LayoutOrder
     TabBtnsL.Padding = UDim.new(0, 8)
-
-    ScriptTitle.Name = "ScriptTitle"
-    ScriptTitle.Parent = Side
-    ScriptTitle.BackgroundTransparency = 1.000
-    ScriptTitle.Position = UDim2.new(0, 10, 0, 10)
-    ScriptTitle.Size = UDim2.new(1, -20, 0, 20)
-    ScriptTitle.Font = Enum.Font.GothamBold
-    ScriptTitle.Text = name
-    ScriptTitle.TextColor3 = TextColor
-    ScriptTitle.TextSize = 14.000
-    ScriptTitle.TextXAlignment = Enum.TextXAlignment.Left
-
-    local UIGradientTitle = Instance.new("UIGradient")
-    UIGradientTitle.Color = ColorSequence.new{
-        ColorSequenceKeypoint.new(0.00, Color3.fromRGB(150, 200, 255)),
-        ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255, 180, 200))
-    }
-    UIGradientTitle.Parent = ScriptTitle
 
     SBG.Color = ColorSequence.new {ColorSequenceKeypoint.new(0.00, zyColor), ColorSequenceKeypoint.new(1.00, zyColor)}
     SBG.Rotation = 90
@@ -521,20 +627,8 @@ function library.new(library, name, theme)
 
     Open.MouseButton1Click:Connect(function() toggleui() end)
 
-    local MainStroke = Instance.new("UIStroke")
-    MainStroke.Name = "RainbowStroke"
-    MainStroke.Parent = CloudMain
-    MainStroke.Thickness = 1.5
-    MainStroke.Color = Color3.fromRGB(255, 255, 255)
-    MainStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-
-    local MainStrokeGradient = Instance.new("UIGradient")
-    MainStrokeGradient.Color = ColorSequence.new{ColorSequenceKeypoint.new(0, Color3.fromRGB(150, 200, 255)), ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 180, 200))}
-    MainStrokeGradient.Rotation = 45
-    MainStrokeGradient.Parent = MainStroke
-
     local window = {}
-    function window.Tab(window, name, icon)
+    function window.Tab(window, tabName, icon)
         local Tab = Instance.new("ScrollingFrame")
         local TabIco = Instance.new("Frame")
         local Indicator = Instance.new("Frame")
@@ -548,7 +642,7 @@ function library.new(library, name, theme)
         Tab.Active = true
         Tab.BackgroundTransparency = 1.000
         Tab.Size = UDim2.new(1, 0, 1, 0)
-        Tab.ScrollBarThickness = 2
+        Tab.ScrollBarThickness = 0
         Tab.Visible = true
         Tab.Position = UDim2.new(0, 0, 1.2, 0)
         Tab.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -579,7 +673,7 @@ function library.new(library, name, theme)
         TabText.Position = UDim2.new(0, 12, 0, 0)
         TabText.Size = UDim2.new(1, -12, 1, 0)
         TabText.Font = Enum.Font.GothamBold
-        TabText.Text = name
+        TabText.Text = tabName
         TabText.TextColor3 = TextColor
         TabText.TextSize = 13.000
         TabText.TextXAlignment = Enum.TextXAlignment.Left
@@ -602,15 +696,17 @@ function library.new(library, name, theme)
         TabL.SortOrder = Enum.SortOrder.LayoutOrder
         TabL.Padding = UDim.new(0, 8)
 
+        local tabData = {TabIco, Tab}
+
         TabBtn.MouseButton1Click:Connect(function()
             spawn(function() Ripple(TabBtn) end)
-            switchTab({TabIco, Tab})
+            switchTab(tabData)
         end)
 
-        if library.currentTab == nil then switchTab({TabIco, Tab}) end
+        if library.currentTab == nil then switchTab(tabData) end
 
         local tab = {}
-        function tab.section(tab, name, TabVal)
+        function tab.section(tab, secName, TabVal)
             local Section = Instance.new("Frame")
             local SectionC = Instance.new("UICorner")
             local SectionText = Instance.new("TextLabel")
@@ -619,6 +715,7 @@ function library.new(library, name, theme)
             local SectionToggle = Instance.new("ImageButton")
             local Objs = Instance.new("Frame")
             local ObjsL = Instance.new("UIListLayout")             
+            
             Section.Name = "Section"
             Section.Parent = Tab
             Section.BackgroundColor3 = zyColor
@@ -636,7 +733,7 @@ function library.new(library, name, theme)
             SectionText.Position = UDim2.new(0, 30, 0, 0)
             SectionText.Size = UDim2.new(1, -30, 0, 32)
             SectionText.Font = Enum.Font.GothamBold
-            SectionText.Text = name
+            SectionText.Text = secName
             SectionText.TextColor3 = TextColor
             SectionText.TextSize = 14.000
             SectionText.TextXAlignment = Enum.TextXAlignment.Left
@@ -672,6 +769,7 @@ function library.new(library, name, theme)
             Objs.Position = UDim2.new(0, 4, 0, 32)
             Objs.Size = UDim2.new(1, -8, 0, 0)
             Objs.AutomaticSize = Enum.AutomaticSize.Y
+            
             local ObjsPadding = Instance.new("UIPadding")
             ObjsPadding.Parent = Objs
             ObjsPadding.PaddingBottom = UDim.new(0, 8)
@@ -680,16 +778,23 @@ function library.new(library, name, theme)
             ObjsL.Parent = Objs
             ObjsL.SortOrder = Enum.SortOrder.LayoutOrder
             ObjsL.Padding = UDim.new(0, 6)
+            
             local open = TabVal
             Objs.Visible = open
             SectionOpened.TextTransparency = (open and 0 or 1)
             SectionOpen.TextTransparency = (open and 1 or 0)
 
+            local sectionData = {
+                SetOpen = function(state)
+                    open = state
+                    Objs.Visible = open
+                    TS:Create(SectionOpened, TweenInfo.new(0.2), {TextTransparency = (open and 0 or 1)}):Play()
+                    TS:Create(SectionOpen, TweenInfo.new(0.2), {TextTransparency = (open and 1 or 0)}):Play()
+                end
+            }
+
             SectionToggle.MouseButton1Click:Connect(function()
-                open = not open
-                Objs.Visible = open
-                TS:Create(SectionOpened, TweenInfo.new(0.2), {TextTransparency = (open and 0 or 1)}):Play()
-                TS:Create(SectionOpen, TweenInfo.new(0.2), {TextTransparency = (open and 1 or 0)}):Play()
+                sectionData.SetOpen(not open)
             end)
 
             local section = {}
@@ -835,6 +940,7 @@ function library.new(library, name, theme)
 
                 if enabled ~= false then funcs:SetState(flag, true) end
                 ToggleBtn.MouseButton1Click:Connect(function() funcs:SetState() end)
+
                 return funcs
             end
 
@@ -1002,7 +1108,7 @@ function library.new(library, name, theme)
                 BoxBG.Size = UDim2.new(0, TextBox.TextBounds.X + 20, 0, 22)
             end
 
-            function section.Slider(section, text, flag, default, min, max, precise, callback)
+            function section.Slider(section, text, flag, default, min, max, precise, callback, onReleased)
                 local callback = callback or function() end
                 local min, max, default = min or 1, max or 10, default or min
                 library.flags[flag] = default
@@ -1120,8 +1226,14 @@ function library.new(library, name, theme)
                     end
                 }
 
-                MinSlider.MouseButton1Click:Connect(function() funcs:SetValue(math.clamp(library.flags[flag] - 1, min, max)) end)
-                AddSlider.MouseButton1Click:Connect(function() funcs:SetValue(math.clamp(library.flags[flag] + 1, min, max)) end)
+                MinSlider.MouseButton1Click:Connect(function() 
+                    funcs:SetValue(math.clamp(library.flags[flag] - 1, min, max))
+                    if onReleased then onReleased(library.flags[flag]) end
+                end)
+                AddSlider.MouseButton1Click:Connect(function() 
+                    funcs:SetValue(math.clamp(library.flags[flag] + 1, min, max))
+                    if onReleased then onReleased(library.flags[flag]) end
+                end)
 
                 funcs:SetValue(default)
                 local dragging, boxFocused, allowed = false, false, { [""] = true, ["-"] = true }
@@ -1136,6 +1248,7 @@ function library.new(library, name, theme)
                 services.UserInputService.InputEnded:Connect(function(input)
                     if dragging and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
                         dragging = false
+                        if onReleased then onReleased(library.flags[flag]) end
                     end
                 end)
 
@@ -1149,6 +1262,7 @@ function library.new(library, name, theme)
                 SliderValue.FocusLost:Connect(function()
                     boxFocused = false
                     if SliderValue.Text == "" then funcs:SetValue(default) end
+                    if onReleased then onReleased(library.flags[flag]) end
                 end)
 
                 SliderValue:GetPropertyChangedSignal("Text"):Connect(function()
@@ -1165,6 +1279,7 @@ function library.new(library, name, theme)
                         funcs:SetValue(tonumber(text))
                     end
                 end)
+
                 return funcs
             end
 
@@ -1291,6 +1406,7 @@ function library.new(library, name, theme)
                 end
 
                 funcs:SetOptions(options)
+
                 return funcs
             end
             return section
@@ -1344,10 +1460,59 @@ function library.new(library, name, theme)
             CloudMain.Size = UDim2.new(0, newWidth, 0, newHeight)
         end
     end)
-    TS:Create(uiScale, TweenInfo.new(1.2, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Scale = 0.91}):Play()
+    
+    function window:BuildUISettingsTab()
+        local tab = self:Tab("界面设定", "rbxassetid://6031280882")
+        local sec = tab:section("自定义UI风格", true)
+
+        local lastSavedScale = UI_CONFIG.Scale
+        local scaleSliderFuncs
+        
+        scaleSliderFuncs = sec:Slider("整体界面缩放 (%)", "UIScaleSlider", math.floor(UI_CONFIG.Scale * 100), 10, 500, false, function(v)
+            uiScale.Scale = v / 100
+        end, function(v)
+            local currentScale = v / 100
+            if currentScale == lastSavedScale then return end
+            
+            ShowConfirm("确定要使用这个缩放大小吗？", function()
+                lastSavedScale = currentScale
+                UI_CONFIG.Scale = lastSavedScale
+                SaveConfig()
+            end, function()
+                scaleSliderFuncs:SetValue(lastSavedScale * 100)
+                uiScale.Scale = lastSavedScale
+            end)
+        end)
+        
+        sec:Toggle("开启边框流光", "UIMarqueeToggle", UI_CONFIG.MarqueeEnabled, function(v)
+            UI_CONFIG.MarqueeEnabled = v
+        end)
+
+        sec:Dropdown("更改UI主题颜色", "UIColorDropdown", PaletteNames, function(v)
+            UI_CONFIG.Palette = v
+            if Palettes[v] then
+                MainStrokeGradient.Color = Palettes[v]
+            end
+        end)
+        
+        sec:Slider("跑马灯速度", "UIMarqueeSpeed", math.floor(UI_CONFIG.MarqueeSpeed * 10), 1, 50, false, function(v)
+            UI_CONFIG.MarqueeSpeed = v / 10
+        end)
+
+        sec:Button("保存当前配置", function()
+            SaveConfig()
+            if getgenv().Ye_Notify then
+                getgenv().Ye_Notify("UI 设置", "设置已保存！", 4)
+            end
+        end)
+    end
+
+    task.defer(function()
+        window:BuildUISettingsTab()
+    end)
 
     return window
 end
 
-_G.YeScript_UI_V7 = library
+_G.YeScript_UI_V15 = library
 return library
