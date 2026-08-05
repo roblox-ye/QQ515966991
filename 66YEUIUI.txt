@@ -26,7 +26,7 @@ local mouse = services.Players.LocalPlayer:GetMouse()
 local IsPC = UserInputService.KeyboardEnabled and not UserInputService.TouchEnabled
 local DefaultScale = IsPC and 1.3 or 0.91
 
-local ConfigPath = "Ye_UI_Settings.json"
+local ConfigPath = "Ye_UI_Settings_V2.json"
 
 local Palettes = {
     ["默认静态 (Static)"] = ColorSequence.new({
@@ -1461,29 +1461,32 @@ function library.new(library, name, theme)
         end
     end)
     
-    function window:BuildUISettingsTab()
+        function window:BuildUISettingsTab()
+        if self.SettingsTabBuilt then return end 
+        self.SettingsTabBuilt = true 
+
         local tab = self:Tab("界面设定", "rbxassetid://6031280882")
         local sec = tab:section("自定义UI风格", true)
 
         local lastSavedScale = UI_CONFIG.Scale
-        local scaleSliderFuncs
-        
-        scaleSliderFuncs = sec:Slider("整体界面缩放 (%)", "UIScaleSlider", math.floor(UI_CONFIG.Scale * 100), 10, 300, false, function(v)
+        local scaleSliderFuncs        
+        scaleSliderFuncs = sec:Slider("整体界面缩放 (%)", "UIScaleSlider", math.floor(UI_CONFIG.Scale * 100), 50, 200, false, function(v)
             uiScale.Scale = v / 100
         end, function(v)
             local currentScale = v / 100
             if currentScale == lastSavedScale then return end
             
-            ShowConfirm("确定要使用这个缩放大小吗？", function()
+            ShowConfirm("确定要使用这个缩放大小吗？(需点击底部保存才可生效)", function()
                 lastSavedScale = currentScale
                 UI_CONFIG.Scale = lastSavedScale
-                SaveConfig()
             end, function()
                 scaleSliderFuncs:SetValue(lastSavedScale * 100)
                 uiScale.Scale = lastSavedScale
             end)
         end)
         
+        sec:Label("提示：UI卡住可按 左Alt + S 键重置大小")
+
         sec:Toggle("开启边框流光", "UIMarqueeToggle", UI_CONFIG.MarqueeEnabled, function(v)
             UI_CONFIG.MarqueeEnabled = v
         end)
@@ -1500,10 +1503,37 @@ function library.new(library, name, theme)
         end)
 
         sec:Button("保存当前配置", function()
-            SaveConfig()
-            if getgenv().Ye_Notify then
-                getgenv().Ye_Notify("UI 设置", "设置已保存！", 4)
-            end
+            ShowConfirm("确认保存并使用当前配置吗？", function()
+                SaveConfig()
+                if getgenv().Ye_Notify then
+                    getgenv().Ye_Notify("UI 设置", "配置已成功保存！", 4)
+                end
+            end)
+        end)
+
+        sec:Button("清除并恢复默认配置", function()
+            ShowConfirm("确定要清除配置并恢复默认吗？", function()
+                UI_CONFIG.Scale = DefaultScale
+                UI_CONFIG.MarqueeEnabled = false
+                UI_CONFIG.Palette = "默认静态 (Static)"
+                UI_CONFIG.MarqueeSpeed = 1
+                lastSavedScale = DefaultScale
+                uiScale.Scale = DefaultScale
+                if scaleSliderFuncs then 
+                    scaleSliderFuncs:SetValue(DefaultScale * 100) 
+                end
+                MainStrokeGradient.Color = Palettes["默认静态 (Static)"]
+                
+                if isfile and isfile(ConfigPath) and delfile then
+                    pcall(function() delfile(ConfigPath) end)
+                else
+                    SaveConfig() 
+                end
+
+                if getgenv().Ye_Notify then
+                    getgenv().Ye_Notify("UI 设置", "已清除配置文件，界面已恢复默认", 4)
+                end
+            end)
         end)
     end
 
