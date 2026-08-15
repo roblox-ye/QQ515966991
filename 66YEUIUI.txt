@@ -1,4 +1,4 @@
-repeat task.wait() until game:IsLoaded()
+Repeat task.wait() until game:IsLoaded()
 
 local HttpService = game:GetService("HttpService")
 local UserInputService = game:GetService("UserInputService")
@@ -28,7 +28,7 @@ local mouse = services.Players.LocalPlayer:GetMouse()
 local IsPC = UserInputService.KeyboardEnabled and not UserInputService.TouchEnabled
 local DefaultScale = IsPC and 1.3 or 0.91
 
-local ConfigPath = "Ye_UI_Settings_V2.json"
+local ConfigPath = "Ye_UI_Settings_V3.json"
 
 local Palettes = {
     ["默认静态 (Static)"] = ColorSequence.new({
@@ -43,10 +43,6 @@ local Palettes = {
         ColorSequenceKeypoint.new(0, Color3.fromRGB(180, 100, 255)),
         ColorSequenceKeypoint.new(1, Color3.fromRGB(220, 150, 255))
     }),
-    ["静态 - 玫瑰金"] = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 180, 150)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 220, 200))
-    }),
     ["彩虹 (Rainbow)"] = ColorSequence.new({
         ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
         ColorSequenceKeypoint.new(0.2, Color3.fromRGB(255, 255, 0)),
@@ -60,30 +56,81 @@ local Palettes = {
         ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 0, 255)),
         ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 255, 255))
     }),
-    ["冷峻蓝 (Cool Blue)"] = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 100, 255)),
-        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 200, 255)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 100, 255))
+    ["赛博朋克 2.0 (霓虹)"] = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 128)),
+        ColorSequenceKeypoint.new(0.33, Color3.fromRGB(0, 255, 255)),
+        ColorSequenceKeypoint.new(0.66, Color3.fromRGB(255, 255, 0)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 128))
     }),
-    ["暗黑红 (Dark Red)"] = ColorSequence.new({
+    ["星空璀璨 (Galaxy)"] = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(25, 0, 50)),
+        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(138, 43, 226)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(25, 0, 50))
+    }),
+    ["熔岩烈火 (Magma)"] = ColorSequence.new({
         ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
-        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(100, 0, 0)),
+        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 140, 0)),
         ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 0))
+    }),
+    ["电竞激进 (Esports)"] = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(50, 255, 50)),
+        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 0, 0)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(50, 255, 50))
+    }),
+    ["冰蓝极光 (Aurora)"] = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 255, 255)),
+        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 128, 255)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 255, 255))
     })
 }
 
 local PaletteNames = {
-    "默认静态 (Static)", "静态 - 清新绿", "静态 - 极光紫", "静态 - 玫瑰金",
-    "彩虹 (Rainbow)", "赛博朋克 (Cyberpunk)", "冷峻蓝 (Cool Blue)", "暗黑红 (Dark Red)"
+    "默认静态 (Static)", "静态 - 清新绿", "静态 - 极光紫", 
+    "彩虹 (Rainbow)", "赛博朋克 (Cyberpunk)", "赛博朋克 2.0 (霓虹)",
+    "星空璀璨 (Galaxy)", "熔岩烈火 (Magma)", "电竞激进 (Esports)", "冰蓝极光 (Aurora)"
+}
+
+local FontTypes = {
+    ["Gotham (标准)"] = Enum.Font.Gotham,
+    ["Gotham Semibold (中等)"] = Enum.Font.GothamSemibold,
+    ["Gotham Bold (加粗)"] = Enum.Font.GothamBold,
+    ["Gotham Black (极粗)"] = Enum.Font.GothamBlack,
+    ["Code (代码等宽)"] = Enum.Font.Code,
+    ["Cartoon (卡通)"] = Enum.Font.Cartoon,
+    ["Sci-Fi (科幻)"] = Enum.Font.SciFi
+}
+
+local FontTypeNames = {
+    "Gotham (标准)", "Gotham Semibold (中等)", "Gotham Bold (加粗)", 
+    "Gotham Black (极粗)", "Code (代码等宽)", "Cartoon (卡通)", "Sci-Fi (科幻)"
+}
+
+local FontColorPresets = {
+    ["默认深色"] = Color3.fromRGB(30, 30, 30),
+    ["纯净洁白"] = Color3.fromRGB(255, 255, 255),
+    ["赛博青蓝"] = Color3.fromRGB(0, 255, 255),
+    ["霓虹亮粉"] = Color3.fromRGB(255, 105, 180),
+    ["血影猩红"] = Color3.fromRGB(255, 50, 50),
+    ["电竞荧绿"] = Color3.fromRGB(50, 255, 50),
+    ["黄金岁月"] = Color3.fromRGB(255, 215, 0)
+}
+
+local FontColorNames = {
+    "默认深色", "纯净洁白", "赛博青蓝", "霓虹亮粉", "血影猩红", "电竞荧绿", "黄金岁月"
 }
 
 local UI_CONFIG = {
     Scale = DefaultScale,
     MarqueeEnabled = false,
-    Palette = "默认静态 (Static)",
+    Palette = "赛博朋克 (Cyberpunk)",
     MarqueeSpeed = 1,
     BGImage = "",
-    BGTransparency = 0.85
+    BGTransparency = 0.85,
+    GlowEnabled = false,
+    GlowColor = "赛博青蓝",
+    FontMode = "Gotham Bold (加粗)",
+    FontColorMode = "默认深色",
+    FontSizeOffset = 0
 }
 
 if isfile and isfile(ConfigPath) then
@@ -313,6 +360,7 @@ function library.new(library, name, theme)
     CloseBtn.TextColor3 = TextColor
     CloseBtn.TextSize = 14
     CloseBtn.ZIndex = 10
+    CloseBtn:SetAttribute("BaseTextSize", 14)
     
     local ConfirmOverlay = Instance.new("Frame")
     ConfirmOverlay.Name = "YeConfirmOverlay"
@@ -365,6 +413,7 @@ function library.new(library, name, theme)
     ConfirmTitle.TextSize = 14
     ConfirmTitle.TextTransparency = 1
     ConfirmTitle.ZIndex = 100
+    ConfirmTitle:SetAttribute("BaseTextSize", 14)
 
     local BtnYes = Instance.new("TextButton")
     BtnYes.Parent = ConfirmMain
@@ -379,6 +428,7 @@ function library.new(library, name, theme)
     BtnYes.TextTransparency = 1
     BtnYes.ZIndex = 100
     BtnYes.AutoButtonColor = false
+    BtnYes:SetAttribute("BaseTextSize", 13)
     Instance.new("UICorner", BtnYes).CornerRadius = UDim.new(0, 6)
     local BtnYesStroke = Instance.new("UIStroke", BtnYes)
     BtnYesStroke.Color = Color3.fromRGB(0, 0, 0)
@@ -397,6 +447,7 @@ function library.new(library, name, theme)
     BtnNo.TextTransparency = 1
     BtnNo.ZIndex = 100
     BtnNo.AutoButtonColor = false
+    BtnNo:SetAttribute("BaseTextSize", 13)
     Instance.new("UICorner", BtnNo).CornerRadius = UDim.new(0, 6)
     local BtnNoStroke = Instance.new("UIStroke", BtnNo)
     BtnNoStroke.Color = Color3.fromRGB(0, 0, 0)
@@ -490,7 +541,7 @@ function library.new(library, name, theme)
     MainStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 
     local MainStrokeGradient = Instance.new("UIGradient")
-    MainStrokeGradient.Color = Palettes[UI_CONFIG.Palette] or Palettes["默认静态 (Static)"]
+    MainStrokeGradient.Color = Palettes[UI_CONFIG.Palette] or Palettes["赛博朋克 (Cyberpunk)"]
     MainStrokeGradient.Rotation = 45
     MainStrokeGradient.Parent = MainStroke
     
@@ -582,6 +633,7 @@ function library.new(library, name, theme)
     ScriptTitle.TextColor3 = TextColor
     ScriptTitle.TextSize = 13.000
     ScriptTitle.TextXAlignment = Enum.TextXAlignment.Left
+    ScriptTitle:SetAttribute("BaseTextSize", 13)
 
     local UIGradientTitle = Instance.new("UIGradient")
     UIGradientTitle.Color = ColorSequence.new{
@@ -596,7 +648,7 @@ function library.new(library, name, theme)
     TabBtns.BackgroundTransparency = 1.000
     TabBtns.BorderSizePixel = 0
     TabBtns.Position = UDim2.new(0, 0, 0, 32) 
-    TabBtns.Size = UDim2.new(1, 0, 1, -85) -- 缩小高度，留出下方空间
+    TabBtns.Size = UDim2.new(1, 0, 1, -85)
     TabBtns.ScrollBarThickness = 0
     TabBtns.CanvasSize = UDim2.new(0, 0, 0, 0) 
     TabBtns.AutomaticCanvasSize = Enum.AutomaticSize.Y
@@ -610,9 +662,6 @@ function library.new(library, name, theme)
     TabBtnsL.SortOrder = Enum.SortOrder.LayoutOrder
     TabBtnsL.Padding = UDim.new(0, 8)
     
-    -- ==========================================
-    -- 左下角用户信息与性能面板
-    -- ==========================================
     local UserInfoFrame = Instance.new("Frame")
     UserInfoFrame.Name = "UserInfo"
     UserInfoFrame.Parent = Side
@@ -640,7 +689,6 @@ function library.new(library, name, theme)
     AvatarCorner.CornerRadius = UDim.new(1, 0)
     AvatarCorner.Parent = AvatarImage
 
-    -- 异步获取并设置当前用户头像
     task.spawn(function()
         local success, content = pcall(function()
             return Players:GetUserThumbnailAsync(LocalPlayer.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420)
@@ -656,14 +704,13 @@ function library.new(library, name, theme)
     StatsText.BackgroundTransparency = 1
     StatsText.Position = UDim2.new(0, 44, 0, 0)
     StatsText.Size = UDim2.new(1, -44, 1, 0)
-    StatsText.Font = Enum.Font.GothamMedium
+    StatsText.Font = Enum.Font.Code
     StatsText.Text = "FPS: --\nPing: --\n--:--:--"
     StatsText.TextColor3 = TextColor
     StatsText.TextSize = 10
     StatsText.TextXAlignment = Enum.TextXAlignment.Left
     StatsText.TextYAlignment = Enum.TextYAlignment.Center
 
-    -- 极低性能占用的状态监控 (1秒更新一次)
     task.spawn(function()
         local lastTime = os.clock()
         local frames = 0
@@ -694,7 +741,6 @@ function library.new(library, name, theme)
             StatsText.Text = string.format("FPS: %d\nPing: %s\n%s", fps, ping, timeStr)
         end
     end)
-    -- ==========================================
 
     SBG.Color = ColorSequence.new {ColorSequenceKeypoint.new(0.00, zyColor), ColorSequenceKeypoint.new(1.00, zyColor)}
     SBG.Rotation = 90
@@ -712,6 +758,7 @@ function library.new(library, name, theme)
     Open.TextSize = 14.000
     Open.Active = true
     Open.Draggable = true
+    Open:SetAttribute("BaseTextSize", 14)
 
     local OpenCorner = Instance.new("UICorner")
     OpenCorner.CornerRadius = UDim.new(0, 25)
@@ -730,6 +777,35 @@ function library.new(library, name, theme)
     OpenStrokeGradient.Parent = OpenStroke
 
     Open.MouseButton1Click:Connect(function() toggleui() end)
+
+    local function RefreshGlobalUI()
+        local selectedFont = FontTypes[UI_CONFIG.FontMode] or Enum.Font.GothamBold
+        local selectedColor = FontColorPresets[UI_CONFIG.FontColorMode] or Color3.fromRGB(30, 30, 30)
+        local sizeOffset = UI_CONFIG.FontSizeOffset or 0
+
+        for _, obj in ipairs(dogent:GetDescendants()) do
+            if obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
+                if not obj:GetAttribute("BaseTextSize") then
+                    obj:SetAttribute("BaseTextSize", obj.TextSize)
+                end
+                
+                if obj.Name ~= "Icon" and obj.Name ~= "Avatar" and obj.Name ~= "Stats" then
+                    obj.Font = selectedFont
+                    obj.TextColor3 = selectedColor
+                    obj.TextSize = obj:GetAttribute("BaseTextSize") + sizeOffset
+                end
+            end
+        end
+
+        if UI_CONFIG.GlowEnabled then
+            local gColor = FontColorPresets[UI_CONFIG.GlowColor] or Color3.fromRGB(0,255,255)
+            DropShadow.ImageColor3 = gColor
+            DropShadow.ImageTransparency = 0.35
+        else
+            DropShadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
+            DropShadow.ImageTransparency = 0.7
+        end
+    end
 
     local window = {}
     function window.Tab(window, tabName, icon)
@@ -782,6 +858,7 @@ function library.new(library, name, theme)
         TabText.TextSize = 13.000
         TabText.TextXAlignment = Enum.TextXAlignment.Left
         TabText.TextTransparency = 0.2
+        TabText:SetAttribute("BaseTextSize", 13)
 
         TabBtn.Name = "TabBtn"
         TabBtn.Parent = TabIco
@@ -841,6 +918,7 @@ function library.new(library, name, theme)
             SectionText.TextColor3 = TextColor
             SectionText.TextSize = 14.000
             SectionText.TextXAlignment = Enum.TextXAlignment.Left
+            SectionText:SetAttribute("BaseTextSize", 14)
 
             SectionOpen.Name = "SectionOpen"
             SectionOpen.Parent = SectionText
@@ -851,6 +929,7 @@ function library.new(library, name, theme)
             SectionOpen.Text = "+"
             SectionOpen.TextColor3 = TextColor
             SectionOpen.TextSize = 16.000
+            SectionOpen:SetAttribute("BaseTextSize", 16)
 
             SectionOpened.Name = "SectionOpened"
             SectionOpened.Parent = SectionOpen
@@ -861,6 +940,7 @@ function library.new(library, name, theme)
             SectionOpened.TextColor3 = TextColor
             SectionOpened.TextSize = 16.000
             SectionOpened.TextTransparency = 1.000
+            SectionOpened:SetAttribute("BaseTextSize", 16)
 
             SectionToggle.Name = "SectionToggle"
             SectionToggle.Parent = SectionOpen
@@ -926,6 +1006,7 @@ function library.new(library, name, theme)
                 Btn.TextXAlignment = Enum.TextXAlignment.Left
                 Btn.Transparency = interfaceTransparency
                 Btn.TextTransparency = NameTransparency
+                Btn:SetAttribute("BaseTextSize", 13)
 
                 BtnC.CornerRadius = UDim.new(0, 6)
                 BtnC.Parent = Btn
@@ -941,6 +1022,7 @@ function library.new(library, name, theme)
                     spawn(function() Ripple(Btn) end)
                     spawn(callback)
                 end)
+                RefreshGlobalUI()
             end
 
             function section:Label(text)
@@ -962,10 +1044,12 @@ function library.new(library, name, theme)
                 TextLabel.TextColor3 = TextColor
                 TextLabel.TextSize = 12.000
                 TextLabel.TextTransparency = NameTransparency
+                TextLabel:SetAttribute("BaseTextSize", 12)
 
                 LabelC.CornerRadius = UDim.new(0, 6)
                 LabelC.Parent = TextLabel
 
+                RefreshGlobalUI()
                 return TextLabel
             end
 
@@ -998,6 +1082,7 @@ function library.new(library, name, theme)
                 ToggleBtn.TextSize = 13.000
                 ToggleBtn.TextXAlignment = Enum.TextXAlignment.Left
                 ToggleBtn.Transparency = interfaceTransparency
+                ToggleBtn:SetAttribute("BaseTextSize", 13)
 
                 ToggleBtnC.CornerRadius = UDim.new(0, 6)
                 ToggleBtnC.Parent = ToggleBtn
@@ -1044,7 +1129,7 @@ function library.new(library, name, theme)
 
                 if enabled ~= false then funcs:SetState(flag, true) end
                 ToggleBtn.MouseButton1Click:Connect(function() funcs:SetState() end)
-
+                RefreshGlobalUI()
                 return funcs
             end
 
@@ -1079,6 +1164,7 @@ function library.new(library, name, theme)
                 KeybindBtn.TextSize = 13.000
                 KeybindBtn.TextXAlignment = Enum.TextXAlignment.Left
                 KeybindBtn.Transparency = interfaceTransparency
+                KeybindBtn:SetAttribute("BaseTextSize", 13)
 
                 KeybindBtnC.CornerRadius = UDim.new(0, 6)
                 KeybindBtnC.Parent = KeybindBtn
@@ -1101,6 +1187,7 @@ function library.new(library, name, theme)
                 KeybindValue.Text = keyTxt
                 KeybindValue.TextColor3 = TextColor
                 KeybindValue.TextSize = 12.000
+                KeybindValue:SetAttribute("BaseTextSize", 12)
 
                 KeybindValueC.CornerRadius = UDim.new(0, 6)
                 KeybindValueC.Parent = KeybindValue
@@ -1128,6 +1215,8 @@ function library.new(library, name, theme)
                     KeybindValue.Size = UDim2.new(0, KeybindValue.TextBounds.X + 20, 0, 22)
                 end)
                 KeybindValue.Size = UDim2.new(0, KeybindValue.TextBounds.X + 20, 0, 22)
+                
+                RefreshGlobalUI()
             end
 
             function section.Textbox(section, text, flag, default, callback)
@@ -1157,6 +1246,7 @@ function library.new(library, name, theme)
                 TextboxBack.TextSize = 13.000
                 TextboxBack.TextXAlignment = Enum.TextXAlignment.Left
                 TextboxBack.Transparency = interfaceTransparency
+                TextboxBack:SetAttribute("BaseTextSize", 13)
 
                 TextboxBackC.CornerRadius = UDim.new(0, 6)
                 TextboxBackC.Parent = TextboxBack
@@ -1194,6 +1284,7 @@ function library.new(library, name, theme)
                 TextBox.Text = default
                 TextBox.TextColor3 = TextColor
                 TextBox.TextSize = 12.000
+                TextBox:SetAttribute("BaseTextSize", 12)
 
                 TextBox.Focused:Connect(function()
                     TS:Create(BoxStroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(0, 122, 255), Transparency = 0}):Play()
@@ -1210,6 +1301,8 @@ function library.new(library, name, theme)
                     BoxBG.Size = UDim2.new(0, TextBox.TextBounds.X + 20, 0, 22)
                 end)
                 BoxBG.Size = UDim2.new(0, TextBox.TextBounds.X + 20, 0, 22)
+                
+                RefreshGlobalUI()
             end
 
             function section.Slider(section, text, flag, default, min, max, precise, callback, onReleased)
@@ -1246,6 +1339,7 @@ function library.new(library, name, theme)
                 SliderBack.TextSize = 13.000
                 SliderBack.TextXAlignment = Enum.TextXAlignment.Left
                 SliderBack.Transparency = interfaceTransparency
+                SliderBack:SetAttribute("BaseTextSize", 13)
 
                 SliderBackC.CornerRadius = UDim.new(0, 6)
                 SliderBackC.Parent = SliderBack
@@ -1276,6 +1370,7 @@ function library.new(library, name, theme)
                 SliderValue.Text = tostring(default)
                 SliderValue.TextColor3 = TextColor
                 SliderValue.TextSize = 12.000
+                SliderValue:SetAttribute("BaseTextSize", 12)
 
                 AddSlider.Parent = SliderBack
                 AddSlider.AnchorPoint = Vector2.new(1, 0.5)
@@ -1286,6 +1381,7 @@ function library.new(library, name, theme)
                 AddSlider.Text = "+"
                 AddSlider.TextColor3 = TextColor
                 AddSlider.TextSize = 20.000
+                AddSlider:SetAttribute("BaseTextSize", 20)
 
                 SliderBar.Parent = SliderBack
                 SliderBar.AnchorPoint = Vector2.new(1, 0.5)
@@ -1312,6 +1408,7 @@ function library.new(library, name, theme)
                 MinSlider.Text = "-"
                 MinSlider.TextColor3 = TextColor
                 MinSlider.TextSize = 20.000
+                MinSlider:SetAttribute("BaseTextSize", 20)
 
                 local funcs = {
                     SetValue = function(self, value)
@@ -1383,7 +1480,8 @@ function library.new(library, name, theme)
                         funcs:SetValue(tonumber(text))
                     end
                 end)
-
+                
+                RefreshGlobalUI()
                 return funcs
             end
 
@@ -1432,6 +1530,7 @@ function library.new(library, name, theme)
                 DropdownOpen.Text = "+"
                 DropdownOpen.TextColor3 = TextColor
                 DropdownOpen.TextSize = 20.000
+                DropdownOpen:SetAttribute("BaseTextSize", 20)
 
                 DropdownText.Parent = DropdownTop
                 DropdownText.BackgroundTransparency = 1.000
@@ -1444,6 +1543,7 @@ function library.new(library, name, theme)
                 DropdownText.TextColor3 = TextColor
                 DropdownText.TextSize = 13.000
                 DropdownText.TextXAlignment = Enum.TextXAlignment.Left
+                DropdownText:SetAttribute("BaseTextSize", 13)
 
                 DropdownModuleL.Parent = DropdownModule
                 DropdownModuleL.SortOrder = Enum.SortOrder.LayoutOrder
@@ -1490,6 +1590,7 @@ function library.new(library, name, theme)
                     Option.TextColor3 = TextColor
                     Option.TextSize = 12.000
                     Option.Visible = open
+                    Option:SetAttribute("BaseTextSize", 12)
 
                     OptionC.CornerRadius = UDim.new(0, 6)
                     OptionC.Parent = Option
@@ -1500,6 +1601,7 @@ function library.new(library, name, theme)
                         DropdownText.Text = Option.Text
                         library.flags[flag] = Option.Text
                     end)
+                    RefreshGlobalUI()
                 end
 
                 funcs.SetOptions = function(self, options)
@@ -1510,7 +1612,8 @@ function library.new(library, name, theme)
                 end
 
                 funcs:SetOptions(options)
-
+                
+                RefreshGlobalUI()
                 return funcs
             end
             return section
@@ -1532,6 +1635,7 @@ function library.new(library, name, theme)
     ResizeHandle.TextXAlignment = Enum.TextXAlignment.Right
     ResizeHandle.TextYAlignment = Enum.TextYAlignment.Bottom
     ResizeHandle.ZIndex = 100
+    ResizeHandle:SetAttribute("BaseTextSize", 18)
 
     local UIS = game:GetService("UserInputService")
     local isResizing, dragStart, startSize = false, nil, nil
@@ -1541,7 +1645,7 @@ function library.new(library, name, theme)
             isResizing = true
             dragStart = input.Position
             startSize = CloudMain.Size
-            TS:Create(ResizeHandle, TweenInfo.new(0.2), {TextSize = 24, TextTransparency = 0}):Play()
+            TS:Create(ResizeHandle, TweenInfo.new(0.2), {TextSize = 24 + UI_CONFIG.FontSizeOffset, TextTransparency = 0}):Play()
         end
     end)
 
@@ -1549,7 +1653,7 @@ function library.new(library, name, theme)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             if isResizing then
                 isResizing = false
-                TS:Create(ResizeHandle, TweenInfo.new(0.3), {TextSize = 18, TextTransparency = 0.4}):Play()
+                TS:Create(ResizeHandle, TweenInfo.new(0.3), {TextSize = 18 + UI_CONFIG.FontSizeOffset, TextTransparency = 0.4}):Play()
                 getgenv().CurrentUIWidth = CloudMain.Size.X.Offset
                 getgenv().CurrentUIHeight = CloudMain.Size.Y.Offset
             end
@@ -1570,6 +1674,24 @@ function library.new(library, name, theme)
         self.SettingsTabBuilt = true 
 
         local tab = self:Tab("界面设定", "rbxassetid://6031280882")
+        
+        local sec2 = tab:section("全局字体自定义", true)
+        
+        sec2:Slider("全局字体大小调整", "UIFontSizeOffset", UI_CONFIG.FontSizeOffset, -4, 10, false, function(v)
+            UI_CONFIG.FontSizeOffset = v
+            RefreshGlobalUI()
+        end)
+        
+        sec2:Dropdown("全局字体样式", "UIFontModeDropdown", FontTypeNames, function(v)
+            UI_CONFIG.FontMode = v
+            RefreshGlobalUI()
+        end)
+        
+        sec2:Dropdown("全局字体颜色", "UIFontColorDropdown", FontColorNames, function(v)
+            UI_CONFIG.FontColorMode = v
+            RefreshGlobalUI()
+        end)
+
         local sec = tab:section("自定义UI风格", true)
 
         local lastSavedScale = UI_CONFIG.Scale
@@ -1594,11 +1716,23 @@ function library.new(library, name, theme)
         sec:Toggle("开启边框流光", "UIMarqueeToggle", UI_CONFIG.MarqueeEnabled, function(v)
             UI_CONFIG.MarqueeEnabled = v
         end)
+        
+        sec:Toggle("启用边缘辉光特效", "UIGlowToggle", UI_CONFIG.GlowEnabled, function(v)
+            UI_CONFIG.GlowEnabled = v
+            RefreshGlobalUI()
+        end)
 
-        sec:Dropdown("更改UI主题颜色", "UIColorDropdown", PaletteNames, function(v)
+        sec:Dropdown("更改UI主题与跑马灯颜色", "UIColorDropdown", PaletteNames, function(v)
             UI_CONFIG.Palette = v
             if Palettes[v] then
                 MainStrokeGradient.Color = Palettes[v]
+            end
+        end)
+        
+        sec:Dropdown("更改边缘辉光颜色", "UIGlowColorDropdown", FontColorNames, function(v)
+            UI_CONFIG.GlowColor = v
+            if UI_CONFIG.GlowEnabled then
+                RefreshGlobalUI()
             end
         end)
         
@@ -1615,11 +1749,9 @@ function library.new(library, name, theme)
             
             local finalId = val
             
-            -- 如果仅仅输入纯数字 ID，自动加上前缀
             if string.match(val, "^%d+$") then
                 finalId = "rbxassetid://" .. val
             end
-            -- 如果它带有格式（比如本来就有 rbxassetid:// 或者 http:// 等等），就会自动走下面直接应用，不重复加前缀。
             
             CustomBG.Image = finalId
             UI_CONFIG.BGImage = finalId
@@ -1644,19 +1776,25 @@ function library.new(library, name, theme)
             ShowConfirm("确定要清除配置并恢复默认吗？", function()
                 UI_CONFIG.Scale = DefaultScale
                 UI_CONFIG.MarqueeEnabled = false
-                UI_CONFIG.Palette = "默认静态 (Static)"
+                UI_CONFIG.Palette = "赛博朋克 (Cyberpunk)"
                 UI_CONFIG.MarqueeSpeed = 1
                 UI_CONFIG.BGImage = ""
                 UI_CONFIG.BGTransparency = 0.85
+                UI_CONFIG.GlowEnabled = false
+                UI_CONFIG.GlowColor = "赛博青蓝"
+                UI_CONFIG.FontMode = "Gotham Bold (加粗)"
+                UI_CONFIG.FontColorMode = "默认深色"
+                UI_CONFIG.FontSizeOffset = 0
                 
                 lastSavedScale = DefaultScale
                 uiScale.Scale = DefaultScale
                 if scaleSliderFuncs then 
                     scaleSliderFuncs:SetValue(DefaultScale * 100) 
                 end
-                MainStrokeGradient.Color = Palettes["默认静态 (Static)"]
+                MainStrokeGradient.Color = Palettes["赛博朋克 (Cyberpunk)"]
                 CustomBG.Image = ""
                 CustomBG.ImageTransparency = 0.85
+                RefreshGlobalUI()
                 
                 if isfile and isfile(ConfigPath) and delfile then
                     pcall(function() delfile(ConfigPath) end)
@@ -1673,7 +1811,13 @@ function library.new(library, name, theme)
 
     task.defer(function()
         window:BuildUISettingsTab()
+        RefreshGlobalUI()
     end)
+    
+    uiScale.Scale = 0
+    CloudMain.BackgroundTransparency = 1
+    TS:Create(uiScale, TweenInfo.new(0.65, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = UI_CONFIG.Scale}):Play()
+    TS:Create(CloudMain, TweenInfo.new(0.3), {BackgroundTransparency = 0.1}):Play()
 
     return window
 end
