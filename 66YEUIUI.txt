@@ -1,4 +1,4 @@
-Repeat task.wait() until game:IsLoaded()
+repeat task.wait() until game:IsLoaded()
 
 local HttpService = game:GetService("HttpService")
 local UserInputService = game:GetService("UserInputService")
@@ -28,7 +28,7 @@ local mouse = services.Players.LocalPlayer:GetMouse()
 local IsPC = UserInputService.KeyboardEnabled and not UserInputService.TouchEnabled
 local DefaultScale = IsPC and 1.3 or 0.91
 
-local ConfigPath = "Ye_UI_Settings_V3.json"
+local ConfigPath = "Ye_UI_Settings_V3_1.json"
 
 local Palettes = {
     ["默认静态 (Static)"] = ColorSequence.new({
@@ -128,6 +128,7 @@ local UI_CONFIG = {
     BGTransparency = 0.85,
     GlowEnabled = false,
     GlowColor = "赛博青蓝",
+    GlowIntensity = 50,
     FontMode = "Gotham Bold (加粗)",
     FontColorMode = "默认深色",
     FontSizeOffset = 0
@@ -698,18 +699,31 @@ function library.new(library, name, theme)
         end
     end)
 
-    local StatsText = Instance.new("TextLabel")
-    StatsText.Name = "Stats"
-    StatsText.Parent = UserInfoFrame
-    StatsText.BackgroundTransparency = 1
-    StatsText.Position = UDim2.new(0, 44, 0, 0)
-    StatsText.Size = UDim2.new(1, -44, 1, 0)
-    StatsText.Font = Enum.Font.Code
-    StatsText.Text = "FPS: --\nPing: --\n--:--:--"
-    StatsText.TextColor3 = TextColor
-    StatsText.TextSize = 10
-    StatsText.TextXAlignment = Enum.TextXAlignment.Left
-    StatsText.TextYAlignment = Enum.TextYAlignment.Center
+    local StatsTitle = Instance.new("TextLabel")
+    StatsTitle.Name = "StatsTitle"
+    StatsTitle.Parent = UserInfoFrame
+    StatsTitle.BackgroundTransparency = 1
+    StatsTitle.Position = UDim2.new(0, 44, 0, 0)
+    StatsTitle.Size = UDim2.new(0, 32, 1, 0)
+    StatsTitle.Font = Enum.Font.GothamMedium
+    StatsTitle.Text = "FPS:\nPing:\n时间:"
+    StatsTitle.TextColor3 = TextColor
+    StatsTitle.TextSize = 10
+    StatsTitle.TextXAlignment = Enum.TextXAlignment.Left
+    StatsTitle.TextYAlignment = Enum.TextYAlignment.Center
+
+    local StatsValue = Instance.new("TextLabel")
+    StatsValue.Name = "StatsValue"
+    StatsValue.Parent = UserInfoFrame
+    StatsValue.BackgroundTransparency = 1
+    StatsValue.Position = UDim2.new(0, 70, 0, 0)
+    StatsValue.Size = UDim2.new(1, -70, 1, 0)
+    StatsValue.Font = Enum.Font.Code
+    StatsValue.Text = "--\n--\n--:--:--"
+    StatsValue.TextColor3 = TextColor
+    StatsValue.TextSize = 10
+    StatsValue.TextXAlignment = Enum.TextXAlignment.Left
+    StatsValue.TextYAlignment = Enum.TextYAlignment.Center
 
     task.spawn(function()
         local lastTime = os.clock()
@@ -720,7 +734,7 @@ function library.new(library, name, theme)
         end)
 
         while task.wait(1) do
-            if not StatsText or not StatsText.Parent then
+            if not StatsValue or not StatsValue.Parent then
                 rsConn:Disconnect()
                 break
             end
@@ -738,7 +752,7 @@ function library.new(library, name, theme)
             end)
             
             local timeStr = os.date("%H:%M:%S")
-            StatsText.Text = string.format("FPS: %d\nPing: %s\n%s", fps, ping, timeStr)
+            StatsValue.Text = string.format("%d\n%s\n%s", fps, ping, timeStr)
         end
     end)
 
@@ -789,10 +803,18 @@ function library.new(library, name, theme)
                     obj:SetAttribute("BaseTextSize", obj.TextSize)
                 end
                 
-                if obj.Name ~= "Icon" and obj.Name ~= "Avatar" and obj.Name ~= "Stats" then
+                if obj.Name ~= "Icon" and obj.Name ~= "Avatar" and obj.Name ~= "StatsTitle" and obj.Name ~= "StatsValue" then
                     obj.Font = selectedFont
                     obj.TextColor3 = selectedColor
                     obj.TextSize = obj:GetAttribute("BaseTextSize") + sizeOffset
+                end
+                
+                if obj.Name == "StatsTitle" or obj.Name == "StatsValue" or obj.Name == "TopLine" then
+                    if obj:IsA("Frame") then
+                        obj.BackgroundColor3 = selectedColor
+                    else
+                        obj.TextColor3 = selectedColor
+                    end
                 end
             end
         end
@@ -800,10 +822,14 @@ function library.new(library, name, theme)
         if UI_CONFIG.GlowEnabled then
             local gColor = FontColorPresets[UI_CONFIG.GlowColor] or Color3.fromRGB(0,255,255)
             DropShadow.ImageColor3 = gColor
-            DropShadow.ImageTransparency = 0.35
+            local glowAlpha = math.clamp(1 - (UI_CONFIG.GlowIntensity / 100), 0, 1)
+            DropShadow.ImageTransparency = glowAlpha
+            local shadowScale = 43 + (UI_CONFIG.GlowIntensity * 0.3)
+            DropShadow.Size = UDim2.new(1, shadowScale, 1, shadowScale)
         else
             DropShadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
             DropShadow.ImageTransparency = 0.7
+            DropShadow.Size = UDim2.new(1, 43, 1, 43)
         end
     end
 
@@ -1722,6 +1748,11 @@ function library.new(library, name, theme)
             RefreshGlobalUI()
         end)
 
+        sec:Slider("边缘辉光强度", "UIGlowIntensity", UI_CONFIG.GlowIntensity, 0, 100, false, function(v)
+            UI_CONFIG.GlowIntensity = v
+            RefreshGlobalUI()
+        end)
+
         sec:Dropdown("更改UI主题与跑马灯颜色", "UIColorDropdown", PaletteNames, function(v)
             UI_CONFIG.Palette = v
             if Palettes[v] then
@@ -1782,6 +1813,7 @@ function library.new(library, name, theme)
                 UI_CONFIG.BGTransparency = 0.85
                 UI_CONFIG.GlowEnabled = false
                 UI_CONFIG.GlowColor = "赛博青蓝"
+                UI_CONFIG.GlowIntensity = 50
                 UI_CONFIG.FontMode = "Gotham Bold (加粗)"
                 UI_CONFIG.FontColorMode = "默认深色"
                 UI_CONFIG.FontSizeOffset = 0
@@ -1814,9 +1846,11 @@ function library.new(library, name, theme)
         RefreshGlobalUI()
     end)
     
+    CloudMain.Position = UDim2.new(0.5, 0, 0.4, 0)
     uiScale.Scale = 0
     CloudMain.BackgroundTransparency = 1
-    TS:Create(uiScale, TweenInfo.new(0.65, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = UI_CONFIG.Scale}):Play()
+    CloudMain.Visible = true
+    TS:Create(uiScale, TweenInfo.new(0.7, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = UI_CONFIG.Scale}):Play()
     TS:Create(CloudMain, TweenInfo.new(0.3), {BackgroundTransparency = 0.1}):Play()
 
     return window
