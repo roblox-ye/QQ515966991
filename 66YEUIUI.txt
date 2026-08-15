@@ -785,7 +785,7 @@ function library.new(library, name, theme)
     Open.Position = UDim2.new(0.01, 0, 0.3, 0)
     Open.Size = UDim2.new(0, 50, 0, 50)
     Open.Font = Enum.Font.GothamBold
-    Open.Text = "YE"
+    Open.Text = "叶脚本"
     Open.TextColor3 = TextColor
     Open.TextSize = 14.000
     Open.Active = true
