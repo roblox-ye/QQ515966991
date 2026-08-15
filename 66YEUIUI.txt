@@ -5,6 +5,8 @@ local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local CoreGui = game:GetService("CoreGui")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
 
 local library = {} 
 local ToggleUI = true
@@ -79,7 +81,9 @@ local UI_CONFIG = {
     Scale = DefaultScale,
     MarqueeEnabled = false,
     Palette = "默认静态 (Static)",
-    MarqueeSpeed = 1
+    MarqueeSpeed = 1,
+    BGImage = "",
+    BGTransparency = 0.85
 }
 
 if isfile and isfile(ConfigPath) then
@@ -263,6 +267,20 @@ function library.new(library, name, theme)
     CloudMain.Active = true
     CloudMain.Draggable = true   
     drag(CloudMain)
+
+    local CustomBG = Instance.new("ImageLabel")
+    CustomBG.Name = "YeCustomBackground"
+    CustomBG.Parent = CloudMain
+    CustomBG.Size = UDim2.new(1, 0, 1, 0)
+    CustomBG.BackgroundTransparency = 1
+    CustomBG.ZIndex = 0 
+    CustomBG.Image = UI_CONFIG.BGImage or ""
+    CustomBG.ImageTransparency = UI_CONFIG.BGTransparency or 0.85 
+    CustomBG.ScaleType = Enum.ScaleType.Crop 
+    
+    local CustomBGCorner = Instance.new("UICorner")
+    CustomBGCorner.CornerRadius = UDim.new(0, 14)
+    CustomBGCorner.Parent = CustomBG
 
     local uiScale = Instance.new("UIScale")
     uiScale.Name = "YeUIScale"
@@ -578,7 +596,7 @@ function library.new(library, name, theme)
     TabBtns.BackgroundTransparency = 1.000
     TabBtns.BorderSizePixel = 0
     TabBtns.Position = UDim2.new(0, 0, 0, 32) 
-    TabBtns.Size = UDim2.new(1, 0, 1, -36)
+    TabBtns.Size = UDim2.new(1, 0, 1, -85) -- 缩小高度，留出下方空间
     TabBtns.ScrollBarThickness = 0
     TabBtns.CanvasSize = UDim2.new(0, 0, 0, 0) 
     TabBtns.AutomaticCanvasSize = Enum.AutomaticSize.Y
@@ -591,6 +609,92 @@ function library.new(library, name, theme)
     TabBtnsL.Parent = TabBtns
     TabBtnsL.SortOrder = Enum.SortOrder.LayoutOrder
     TabBtnsL.Padding = UDim.new(0, 8)
+    
+    -- ==========================================
+    -- 左下角用户信息与性能面板
+    -- ==========================================
+    local UserInfoFrame = Instance.new("Frame")
+    UserInfoFrame.Name = "UserInfo"
+    UserInfoFrame.Parent = Side
+    UserInfoFrame.BackgroundTransparency = 1
+    UserInfoFrame.Size = UDim2.new(1, 0, 0, 48)
+    UserInfoFrame.Position = UDim2.new(0, 0, 1, -48)
+
+    local UserInfoStroke = Instance.new("Frame") 
+    UserInfoStroke.Name = "TopLine"
+    UserInfoStroke.Parent = UserInfoFrame
+    UserInfoStroke.BackgroundColor3 = TextColor
+    UserInfoStroke.BackgroundTransparency = 0.8
+    UserInfoStroke.BorderSizePixel = 0
+    UserInfoStroke.Size = UDim2.new(0.8, 0, 0, 1)
+    UserInfoStroke.Position = UDim2.new(0.1, 0, 0, 0)
+
+    local AvatarImage = Instance.new("ImageLabel")
+    AvatarImage.Name = "Avatar"
+    AvatarImage.Parent = UserInfoFrame
+    AvatarImage.BackgroundTransparency = 1
+    AvatarImage.Position = UDim2.new(0, 6, 0.5, -16)
+    AvatarImage.Size = UDim2.new(0, 32, 0, 32)
+    AvatarImage.Image = ""
+    local AvatarCorner = Instance.new("UICorner")
+    AvatarCorner.CornerRadius = UDim.new(1, 0)
+    AvatarCorner.Parent = AvatarImage
+
+    -- 异步获取并设置当前用户头像
+    task.spawn(function()
+        local success, content = pcall(function()
+            return Players:GetUserThumbnailAsync(LocalPlayer.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420)
+        end)
+        if success and content then
+            AvatarImage.Image = content
+        end
+    end)
+
+    local StatsText = Instance.new("TextLabel")
+    StatsText.Name = "Stats"
+    StatsText.Parent = UserInfoFrame
+    StatsText.BackgroundTransparency = 1
+    StatsText.Position = UDim2.new(0, 44, 0, 0)
+    StatsText.Size = UDim2.new(1, -44, 1, 0)
+    StatsText.Font = Enum.Font.GothamMedium
+    StatsText.Text = "FPS: --\nPing: --\n--:--:--"
+    StatsText.TextColor3 = TextColor
+    StatsText.TextSize = 10
+    StatsText.TextXAlignment = Enum.TextXAlignment.Left
+    StatsText.TextYAlignment = Enum.TextYAlignment.Center
+
+    -- 极低性能占用的状态监控 (1秒更新一次)
+    task.spawn(function()
+        local lastTime = os.clock()
+        local frames = 0
+        
+        local rsConn = RunService.RenderStepped:Connect(function()
+            frames = frames + 1
+        end)
+
+        while task.wait(1) do
+            if not StatsText or not StatsText.Parent then
+                rsConn:Disconnect()
+                break
+            end
+
+            local currentTime = os.clock()
+            local dt = currentTime - lastTime
+            local fps = math.floor(frames / dt)
+            frames = 0
+            lastTime = currentTime
+            
+            local ping = "--"
+            pcall(function()
+                local pingVal = game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue()
+                ping = math.floor(pingVal) .. "ms"
+            end)
+            
+            local timeStr = os.date("%H:%M:%S")
+            StatsText.Text = string.format("FPS: %d\nPing: %s\n%s", fps, ping, timeStr)
+        end
+    end)
+    -- ==========================================
 
     SBG.Color = ColorSequence.new {ColorSequenceKeypoint.new(0.00, zyColor), ColorSequenceKeypoint.new(1.00, zyColor)}
     SBG.Rotation = 90
@@ -1461,7 +1565,7 @@ function library.new(library, name, theme)
         end
     end)
     
-        function window:BuildUISettingsTab()
+    function window:BuildUISettingsTab()
         if self.SettingsTabBuilt then return end 
         self.SettingsTabBuilt = true 
 
@@ -1502,6 +1606,31 @@ function library.new(library, name, theme)
             UI_CONFIG.MarqueeSpeed = v / 10
         end)
 
+        sec:Textbox("自定义背景图 (填ID,清空填0)", "CustomBGImage", UI_CONFIG.BGImage, function(val)
+            if val == "" or val == "0" then
+                CustomBG.Image = ""
+                UI_CONFIG.BGImage = ""
+                return
+            end
+            
+            local finalId = val
+            
+            -- 如果仅仅输入纯数字 ID，自动加上前缀
+            if string.match(val, "^%d+$") then
+                finalId = "rbxassetid://" .. val
+            end
+            -- 如果它带有格式（比如本来就有 rbxassetid:// 或者 http:// 等等），就会自动走下面直接应用，不重复加前缀。
+            
+            CustomBG.Image = finalId
+            UI_CONFIG.BGImage = finalId
+        end)
+
+        sec:Slider("背景不透明度", "CustomBGAlpha", math.floor((1 - (UI_CONFIG.BGTransparency or 0.85)) * 100), 0, 100, false, function(v)
+            local trans = 1 - (v / 100)
+            CustomBG.ImageTransparency = trans
+            UI_CONFIG.BGTransparency = trans
+        end)
+
         sec:Button("保存当前配置", function()
             ShowConfirm("确认保存并使用当前配置吗？", function()
                 SaveConfig()
@@ -1517,12 +1646,17 @@ function library.new(library, name, theme)
                 UI_CONFIG.MarqueeEnabled = false
                 UI_CONFIG.Palette = "默认静态 (Static)"
                 UI_CONFIG.MarqueeSpeed = 1
+                UI_CONFIG.BGImage = ""
+                UI_CONFIG.BGTransparency = 0.85
+                
                 lastSavedScale = DefaultScale
                 uiScale.Scale = DefaultScale
                 if scaleSliderFuncs then 
                     scaleSliderFuncs:SetValue(DefaultScale * 100) 
                 end
                 MainStrokeGradient.Color = Palettes["默认静态 (Static)"]
+                CustomBG.Image = ""
+                CustomBG.ImageTransparency = 0.85
                 
                 if isfile and isfile(ConfigPath) and delfile then
                     pcall(function() delfile(ConfigPath) end)
