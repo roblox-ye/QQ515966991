@@ -341,7 +341,7 @@ function library.new(library, name, theme)
             uiScale.Scale = DefaultScale
             SaveConfig()
             if getgenv().Ye_Notify then
-                getgenv().Ye_Notify("UI 救援", "界面缩放已重置为默认大小！", 3)
+                getgenv().Ye_Notify("叶脚本", "界面缩放已重置为默认大小！", 3)
             end
         end
     end)
@@ -733,13 +733,13 @@ function library.new(library, name, theme)
     StatsTitle.Name = "StatsTitle"
     StatsTitle.Parent = UserInfoFrame
     StatsTitle.BackgroundTransparency = 1
-    StatsTitle.Position = UDim2.new(0, 46, 0, 0)
+    StatsTitle.Position = UDim2.new(0, 44, 0, 0)
     StatsTitle.Size = UDim2.new(0, 36, 1, 0)
     StatsTitle.Font = Enum.Font.GothamMedium
     StatsTitle.Text = "FPS:\nPing:\n时间:"
     StatsTitle.TextColor3 = TextColor
     StatsTitle.TextSize = 10
-    StatsTitle.TextXAlignment = Enum.TextXAlignment.Left
+    StatsTitle.TextXAlignment = Enum.TextXAlignment.Right
     StatsTitle.TextYAlignment = Enum.TextYAlignment.Center
     StatsTitle:SetAttribute("BaseTextSize", 10)
 
@@ -799,7 +799,7 @@ function library.new(library, name, theme)
     Open.Position = UDim2.new(0.01, 0, 0.3, 0)
     Open.Size = UDim2.new(0, 50, 0, 50)
     Open.Font = Enum.Font.GothamBold
-    Open.Text = "YE"
+    Open.Text = "叶脚本"
     Open.TextColor3 = TextColor
     Open.TextSize = 14.000
     Open.Active = true
@@ -826,7 +826,7 @@ function library.new(library, name, theme)
 
     local function RefreshGlobalUI()
         local selectedFont = FontTypes[UI_CONFIG.FontMode] or Enum.Font.GothamBold
-        local selectedColor = FontColorPresets[UI_CONFIG.FontColorMode] or Color3.fromRGB(30, 30, 30)
+        local selectedColor = FontColorPresets[UI_CONFIG.FontColorMode] or Color3.fromRGB(255, 255, 255)
         local sizeOffset = UI_CONFIG.FontSizeOffset or 0
 
         for _, obj in ipairs(dogent:GetDescendants()) do
@@ -1849,7 +1849,7 @@ function library.new(library, name, theme)
                 UI_CONFIG.GlowColor = "赛博青蓝"
                 UI_CONFIG.GlowIntensity = 50
                 UI_CONFIG.FontMode = "Gotham Bold (加粗)"
-                UI_CONFIG.FontColorMode = "默认深色"
+                UI_CONFIG.FontColorMode = "纯净洁白"
                 UI_CONFIG.FontSizeOffset = 0
                 
                 lastSavedScale = DefaultScale
