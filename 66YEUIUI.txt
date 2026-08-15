@@ -1,4 +1,4 @@
-repeat task.wait() until game:IsLoaded()
+Repeat task.wait() until game:IsLoaded()
 
 local HttpService = game:GetService("HttpService")
 local UserInputService = game:GetService("UserInputService")
@@ -28,7 +28,7 @@ local mouse = services.Players.LocalPlayer:GetMouse()
 local IsPC = UserInputService.KeyboardEnabled and not UserInputService.TouchEnabled
 local DefaultScale = IsPC and 1.3 or 0.91
 
-local ConfigPath = "Ye_UI_Settings_V4.json"
+local ConfigPath = "Ye_UI_Settings_V3.json"
 
 local Palettes = {
     ["默认静态 (Static)"] = ColorSequence.new({
@@ -119,28 +119,18 @@ local FontColorNames = {
     "默认深色", "纯净洁白", "赛博青蓝", "霓虹亮粉", "血影猩红", "电竞荧绿", "黄金岁月"
 }
 
-local UIThemeColors = {
-    ["深空暗黑"] = {BG = Color3.fromRGB(20, 20, 25), Sec = Color3.fromRGB(30, 30, 35)},
-    ["纯净亮白"] = {BG = Color3.fromRGB(245, 247, 250), Sec = Color3.fromRGB(255, 255, 255)},
-    ["极客透明"] = {BG = Color3.fromRGB(0, 0, 0), Sec = Color3.fromRGB(15, 15, 15)}
-}
-
-local UIThemeNames = {"深空暗黑", "纯净亮白", "极客透明"}
-
 local UI_CONFIG = {
     Scale = DefaultScale,
     MarqueeEnabled = false,
-    Palette = "赛博朋克 2.0 (霓虹)",
+    Palette = "赛博朋克 (Cyberpunk)",
     MarqueeSpeed = 1,
     BGImage = "",
     BGTransparency = 0.85,
-    GlowEnabled = true,
+    GlowEnabled = false,
     GlowColor = "赛博青蓝",
-    GlowIntensity = 50,
     FontMode = "Gotham Bold (加粗)",
-    FontColorMode = "纯净洁白",
-    FontSizeOffset = 0,
-    BaseTheme = "深空暗黑"
+    FontColorMode = "默认深色",
+    FontSizeOffset = 0
 }
 
 if isfile and isfile(ConfigPath) then
@@ -157,31 +147,6 @@ local function SaveConfig()
         pcall(function()
             writefile(ConfigPath, HttpService:JSONEncode(UI_CONFIG))
         end)
-    end
-end
-
-local function FetchAndApplyImage(urlOrId)
-    if not urlOrId or urlOrId == "" or urlOrId == "0" then return "" end
-    
-    if string.match(urlOrId, "^http") then
-        if writefile and getcustomasset then
-            local hash = string.sub(urlOrId, -15):gsub("[^%w]", "")
-            local fileName = "YeScript_IMG_" .. hash .. ".png"
-            if isfile and not isfile(fileName) then
-                pcall(function()
-                    local imgData = game:HttpGet(urlOrId)
-                    writefile(fileName, imgData)
-                end)
-            end
-            if isfile and isfile(fileName) then
-                return getcustomasset(fileName)
-            end
-        end
-        return ""
-    elseif string.match(urlOrId, "^%d+$") then
-        return "rbxassetid://" .. urlOrId
-    else
-        return urlOrId
     end
 end
 
@@ -224,6 +189,7 @@ function Ripple(obj)
     end)
 end
 
+local toggled = false
 local switchingTabs = false
 
 function switchTab(new)
@@ -304,14 +270,13 @@ function library.new(library, name, theme)
         
     local TS = game:GetService("TweenService")
     
-    local ThemeDat = UIThemeColors[UI_CONFIG.BaseTheme] or UIThemeColors["深空暗黑"]
-    local MainColor = Color3.fromRGB(235, 235, 240)
-    local Background = ThemeDat.BG
-    local zyColor = ThemeDat.Sec
-    local beijingColor = Color3.fromRGB(225, 225, 230)
-    local TextColor = FontColorPresets[UI_CONFIG.FontColorMode] or Color3.fromRGB(255, 255, 255)
-    local interfaceTransparency = 0.200
-    local NameTransparency = 0
+    MainColor = Color3.fromRGB(235, 235, 240)
+    Background = Color3.fromRGB(245, 247, 250)
+    zyColor = Color3.fromRGB(255, 255, 255)
+    beijingColor = Color3.fromRGB(225, 225, 230)
+    TextColor = Color3.fromRGB(30, 30, 30)
+    interfaceTransparency = 0.200
+    NameTransparency = 0
 
     local dogent = Instance.new("ScreenGui")
     local CloudMain = Instance.new("Frame")
@@ -342,9 +307,9 @@ function library.new(library, name, theme)
     CloudMain.AnchorPoint = Vector2.new(0.5, 0.5)
     CloudMain.BackgroundColor3 = Background
     CloudMain.BorderColor3 = MainColor
-    CloudMain.Position = UDim2.new(0.5, 0, 0.5, 0)
+    CloudMain.Position = UDim2.new(0.5, 0, 0.4, 0)
     CloudMain.Size = UDim2.new(0, 482, 0, 369)
-    CloudMain.BackgroundTransparency = UI_CONFIG.BaseTheme == "极客透明" and 0.8 or 0.1
+    CloudMain.BackgroundTransparency = 0.1
     CloudMain.Visible = true 
     CloudMain.Active = true
     CloudMain.Draggable = true   
@@ -356,7 +321,7 @@ function library.new(library, name, theme)
     CustomBG.Size = UDim2.new(1, 0, 1, 0)
     CustomBG.BackgroundTransparency = 1
     CustomBG.ZIndex = 0 
-    CustomBG.Image = FetchAndApplyImage(UI_CONFIG.BGImage)
+    CustomBG.Image = UI_CONFIG.BGImage or ""
     CustomBG.ImageTransparency = UI_CONFIG.BGTransparency or 0.85 
     CustomBG.ScaleType = Enum.ScaleType.Crop 
     
@@ -367,7 +332,7 @@ function library.new(library, name, theme)
     local uiScale = Instance.new("UIScale")
     uiScale.Name = "YeUIScale"
     uiScale.Parent = CloudMain
-    uiScale.Scale = 0
+    uiScale.Scale = UI_CONFIG.Scale
     
     services.UserInputService.InputBegan:Connect(function(input, gpe)
         if not gpe and input.KeyCode == Enum.KeyCode.S and services.UserInputService:IsKeyDown(Enum.KeyCode.LeftAlt) then
@@ -417,7 +382,7 @@ function library.new(library, name, theme)
     ConfirmMain.AnchorPoint = Vector2.new(0.5, 0.5)
     ConfirmMain.Position = UDim2.new(0.5, 0, 0.5, 0)
     ConfirmMain.Size = UDim2.new(0, 250, 0, 120)
-    ConfirmMain.BackgroundColor3 = Color3.fromRGB(20,20,25)
+    ConfirmMain.BackgroundColor3 = Background
     ConfirmMain.BackgroundTransparency = 1
     ConfirmMain.ZIndex = 100
 
@@ -444,7 +409,7 @@ function library.new(library, name, theme)
     ConfirmTitle.Size = UDim2.new(1, 0, 0, 30)
     ConfirmTitle.Font = Enum.Font.GothamBold
     ConfirmTitle.Text = "确认执行此操作？"
-    ConfirmTitle.TextColor3 = Color3.fromRGB(255,255,255)
+    ConfirmTitle.TextColor3 = TextColor
     ConfirmTitle.TextSize = 14
     ConfirmTitle.TextTransparency = 1
     ConfirmTitle.ZIndex = 100
@@ -452,7 +417,7 @@ function library.new(library, name, theme)
 
     local BtnYes = Instance.new("TextButton")
     BtnYes.Parent = ConfirmMain
-    BtnYes.BackgroundColor3 = Color3.fromRGB(40,40,45)
+    BtnYes.BackgroundColor3 = zyColor
     BtnYes.Position = UDim2.new(0, 25, 0, 70)
     BtnYes.Size = UDim2.new(0, 90, 0, 32)
     BtnYes.Font = Enum.Font.GothamBold
@@ -471,12 +436,12 @@ function library.new(library, name, theme)
 
     local BtnNo = Instance.new("TextButton")
     BtnNo.Parent = ConfirmMain
-    BtnNo.BackgroundColor3 = Color3.fromRGB(40,40,45)
+    BtnNo.BackgroundColor3 = zyColor
     BtnNo.Position = UDim2.new(1, -115, 0, 70)
     BtnNo.Size = UDim2.new(0, 90, 0, 32)
     BtnNo.Font = Enum.Font.GothamBold
     BtnNo.Text = "不"
-    BtnNo.TextColor3 = Color3.fromRGB(255,255,255)
+    BtnNo.TextColor3 = TextColor
     BtnNo.TextSize = 13
     BtnNo.BackgroundTransparency = 1
     BtnNo.TextTransparency = 1
@@ -576,7 +541,7 @@ function library.new(library, name, theme)
     MainStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 
     local MainStrokeGradient = Instance.new("UIGradient")
-    MainStrokeGradient.Color = Palettes[UI_CONFIG.Palette] or Palettes["赛博朋克 2.0 (霓虹)"]
+    MainStrokeGradient.Color = Palettes[UI_CONFIG.Palette] or Palettes["赛博朋克 (Cyberpunk)"]
     MainStrokeGradient.Rotation = 45
     MainStrokeGradient.Parent = MainStroke
     
@@ -606,7 +571,7 @@ function library.new(library, name, theme)
         if isOpening then
             CloudMain.Position = UDim2.new(0.5, 0, 1.5, 0) 
             CloudMain.Visible = true
-            local openTween = TS:Create(CloudMain, TweenInfo.new(0.45, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Position = UDim2.new(0.5, 0, 0.5, 0)})
+            local openTween = TS:Create(CloudMain, TweenInfo.new(0.45, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Position = UDim2.new(0.5, 0, 0.4, 0)})
             table.insert(_G.activeUITweens, openTween)
             openTween.Completed:Once(function()
                 if mainStroke then mainStroke.Enabled = true end
@@ -815,61 +780,30 @@ function library.new(library, name, theme)
 
     local function RefreshGlobalUI()
         local selectedFont = FontTypes[UI_CONFIG.FontMode] or Enum.Font.GothamBold
-        local selectedColor = FontColorPresets[UI_CONFIG.FontColorMode] or Color3.fromRGB(255, 255, 255)
+        local selectedColor = FontColorPresets[UI_CONFIG.FontColorMode] or Color3.fromRGB(30, 30, 30)
         local sizeOffset = UI_CONFIG.FontSizeOffset or 0
-        local td = UIThemeColors[UI_CONFIG.BaseTheme] or UIThemeColors["深空暗黑"]
-        
-        CloudMain.BackgroundColor3 = td.BG
-        Open.BackgroundColor3 = td.BG
-        if UI_CONFIG.BaseTheme == "极客透明" then
-            CloudMain.BackgroundTransparency = 0.8
-        else
-            CloudMain.BackgroundTransparency = 0.1
-        end
 
         for _, obj in ipairs(dogent:GetDescendants()) do
             if obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
-                if obj.Name ~= "CloseBtn" and obj.Name ~= "Avatar" and obj.Name ~= "Stats" and obj.Name ~= "Ripple" and obj.Name ~= "YeResizeHandle" and not string.match(obj.Parent.Name, "Toggle") then
-                    if obj.BackgroundColor3 ~= Color3.fromRGB(0, 122, 255) and obj.Name ~= "BoxBG" then
-                        obj.BackgroundColor3 = td.Sec
-                        if UI_CONFIG.BaseTheme == "极客透明" then
-                            if obj.Name == "Section" or obj.Parent.Name == "Objs" then
-                                obj.BackgroundTransparency = 0.8
-                            end
-                        else
-                            if obj.Name == "Section" then
-                                obj.BackgroundTransparency = 1
-                            end
-                        end
-                    end
-                end
-                
                 if not obj:GetAttribute("BaseTextSize") then
                     obj:SetAttribute("BaseTextSize", obj.TextSize)
                 end
                 
-                if obj.Name ~= "Avatar" and obj.Name ~= "Stats" then
+                if obj.Name ~= "Icon" and obj.Name ~= "Avatar" and obj.Name ~= "Stats" then
                     obj.Font = selectedFont
-                    if obj.Name ~= "Ripple" and obj.Name ~= "Indicator" and obj.Name ~= "TabBtn" then
-                        obj.TextColor3 = selectedColor
-                    end
+                    obj.TextColor3 = selectedColor
                     obj.TextSize = obj:GetAttribute("BaseTextSize") + sizeOffset
                 end
-            elseif obj:IsA("Frame") and obj.Name == "Section" then
-                obj.BackgroundColor3 = td.Sec
             end
         end
 
         if UI_CONFIG.GlowEnabled then
             local gColor = FontColorPresets[UI_CONFIG.GlowColor] or Color3.fromRGB(0,255,255)
             DropShadow.ImageColor3 = gColor
-            DropShadow.ImageTransparency = (100 - UI_CONFIG.GlowIntensity) / 100
-            local rawSz = 43 + (UI_CONFIG.GlowIntensity / 2)
-            DropShadow.Size = UDim2.new(1, rawSz, 1, rawSz)
+            DropShadow.ImageTransparency = 0.35
         else
             DropShadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
             DropShadow.ImageTransparency = 0.7
-            DropShadow.Size = UDim2.new(1, 43, 1, 43)
         end
     end
 
@@ -1741,15 +1675,10 @@ function library.new(library, name, theme)
 
         local tab = self:Tab("界面设定", "rbxassetid://6031280882")
         
-        local sec2 = tab:section("全局主题自定义", true)
+        local sec2 = tab:section("全局字体自定义", true)
         
-        sec2:Dropdown("UI 全局底色", "UIBaseThemeDropdown", UIThemeNames, function(v)
-            UI_CONFIG.BaseTheme = v
-            RefreshGlobalUI()
-        end)
-        
-        sec2:Dropdown("全局字体颜色", "UIFontColorDropdown", FontColorNames, function(v)
-            UI_CONFIG.FontColorMode = v
+        sec2:Slider("全局字体大小调整", "UIFontSizeOffset", UI_CONFIG.FontSizeOffset, -4, 10, false, function(v)
+            UI_CONFIG.FontSizeOffset = v
             RefreshGlobalUI()
         end)
         
@@ -1758,8 +1687,8 @@ function library.new(library, name, theme)
             RefreshGlobalUI()
         end)
         
-        sec2:Slider("全局字体大小调整", "UIFontSizeOffset", UI_CONFIG.FontSizeOffset, -4, 10, false, function(v)
-            UI_CONFIG.FontSizeOffset = v
+        sec2:Dropdown("全局字体颜色", "UIFontColorDropdown", FontColorNames, function(v)
+            UI_CONFIG.FontColorMode = v
             RefreshGlobalUI()
         end)
 
@@ -1784,24 +1713,20 @@ function library.new(library, name, theme)
         
         sec:Label("提示：UI卡住可按 左Alt + S 键重置大小")
 
-        sec:Toggle("开启边框流光跑马灯", "UIMarqueeToggle", UI_CONFIG.MarqueeEnabled, function(v)
+        sec:Toggle("开启边框流光", "UIMarqueeToggle", UI_CONFIG.MarqueeEnabled, function(v)
             UI_CONFIG.MarqueeEnabled = v
         end)
         
-        sec:Dropdown("更改UI流光主题颜色", "UIColorDropdown", PaletteNames, function(v)
+        sec:Toggle("启用边缘辉光特效", "UIGlowToggle", UI_CONFIG.GlowEnabled, function(v)
+            UI_CONFIG.GlowEnabled = v
+            RefreshGlobalUI()
+        end)
+
+        sec:Dropdown("更改UI主题与跑马灯颜色", "UIColorDropdown", PaletteNames, function(v)
             UI_CONFIG.Palette = v
             if Palettes[v] then
                 MainStrokeGradient.Color = Palettes[v]
             end
-        end)
-        
-        sec:Slider("流光跑马灯速度", "UIMarqueeSpeed", math.floor(UI_CONFIG.MarqueeSpeed * 10), 1, 50, false, function(v)
-            UI_CONFIG.MarqueeSpeed = v / 10
-        end)
-        
-        sec:Toggle("启用边缘霓虹辉光特效", "UIGlowToggle", UI_CONFIG.GlowEnabled, function(v)
-            UI_CONFIG.GlowEnabled = v
-            RefreshGlobalUI()
         end)
         
         sec:Dropdown("更改边缘辉光颜色", "UIGlowColorDropdown", FontColorNames, function(v)
@@ -1811,12 +1736,11 @@ function library.new(library, name, theme)
             end
         end)
         
-        sec:Slider("辉光亮度调整 (越大越亮)", "UIGlowIntensity", UI_CONFIG.GlowIntensity, 0, 100, false, function(v)
-            UI_CONFIG.GlowIntensity = v
-            RefreshGlobalUI()
+        sec:Slider("跑马灯速度", "UIMarqueeSpeed", math.floor(UI_CONFIG.MarqueeSpeed * 10), 1, 50, false, function(v)
+            UI_CONFIG.MarqueeSpeed = v / 10
         end)
-        
-        sec:Textbox("自定义背景图 (可填直连/ID, 清空填0)", "CustomBGImage", UI_CONFIG.BGImage, function(val)
+
+        sec:Textbox("自定义背景图 (填ID,清空填0)", "CustomBGImage", UI_CONFIG.BGImage, function(val)
             if val == "" or val == "0" then
                 CustomBG.Image = ""
                 UI_CONFIG.BGImage = ""
@@ -1824,22 +1748,13 @@ function library.new(library, name, theme)
             end
             
             local finalId = val
+            
             if string.match(val, "^%d+$") then
                 finalId = "rbxassetid://" .. val
             end
             
+            CustomBG.Image = finalId
             UI_CONFIG.BGImage = finalId
-            CustomBG.Image = FetchAndApplyImage(finalId)
-        end)
-
-        sec:Button("👑 启用叶脚本专属背景 (自动下载)", function()
-            local specificUrl = "https://raw.githubusercontent.com/roblox-ye/QQ515966991/refs/heads/main/IMG_20260810_082519.jpg"
-            UI_CONFIG.BGImage = specificUrl
-            CustomBG.Image = FetchAndApplyImage(specificUrl)
-            SaveConfig()
-            if getgenv().Ye_Notify then
-                getgenv().Ye_Notify("专属背景", "已成功从云端下载并应用叶脚本专属背景图！", 4)
-            end
         end)
 
         sec:Slider("背景不透明度", "CustomBGAlpha", math.floor((1 - (UI_CONFIG.BGTransparency or 0.85)) * 100), 0, 100, false, function(v)
@@ -1848,11 +1763,11 @@ function library.new(library, name, theme)
             UI_CONFIG.BGTransparency = trans
         end)
 
-        sec:Button("保存当前所有配置", function()
-            ShowConfirm("确认保存并使用当前所有的视觉配置吗？", function()
+        sec:Button("保存当前配置", function()
+            ShowConfirm("确认保存并使用当前配置吗？", function()
                 SaveConfig()
                 if getgenv().Ye_Notify then
-                    getgenv().Ye_Notify("UI 设置", "完美保存成功！下次进游戏自动加载", 4)
+                    getgenv().Ye_Notify("UI 设置", "配置已成功保存！", 4)
                 end
             end)
         end)
@@ -1861,24 +1776,22 @@ function library.new(library, name, theme)
             ShowConfirm("确定要清除配置并恢复默认吗？", function()
                 UI_CONFIG.Scale = DefaultScale
                 UI_CONFIG.MarqueeEnabled = false
-                UI_CONFIG.Palette = "赛博朋克 2.0 (霓虹)"
+                UI_CONFIG.Palette = "赛博朋克 (Cyberpunk)"
                 UI_CONFIG.MarqueeSpeed = 1
                 UI_CONFIG.BGImage = ""
                 UI_CONFIG.BGTransparency = 0.85
-                UI_CONFIG.GlowEnabled = true
+                UI_CONFIG.GlowEnabled = false
                 UI_CONFIG.GlowColor = "赛博青蓝"
-                UI_CONFIG.GlowIntensity = 50
                 UI_CONFIG.FontMode = "Gotham Bold (加粗)"
-                UI_CONFIG.FontColorMode = "纯净洁白"
+                UI_CONFIG.FontColorMode = "默认深色"
                 UI_CONFIG.FontSizeOffset = 0
-                UI_CONFIG.BaseTheme = "深空暗黑"
                 
                 lastSavedScale = DefaultScale
                 uiScale.Scale = DefaultScale
                 if scaleSliderFuncs then 
                     scaleSliderFuncs:SetValue(DefaultScale * 100) 
                 end
-                MainStrokeGradient.Color = Palettes["赛博朋克 2.0 (霓虹)"]
+                MainStrokeGradient.Color = Palettes["赛博朋克 (Cyberpunk)"]
                 CustomBG.Image = ""
                 CustomBG.ImageTransparency = 0.85
                 RefreshGlobalUI()
@@ -1890,7 +1803,7 @@ function library.new(library, name, theme)
                 end
 
                 if getgenv().Ye_Notify then
-                    getgenv().Ye_Notify("UI 设置", "已清除配置文件，界面已恢复极致出厂设置", 4)
+                    getgenv().Ye_Notify("UI 设置", "已清除配置文件，界面已恢复默认", 4)
                 end
             end)
         end)
@@ -1901,10 +1814,10 @@ function library.new(library, name, theme)
         RefreshGlobalUI()
     end)
     
-    CloudMain.Position = UDim2.new(0.5, 0, 0.5, 0)
     uiScale.Scale = 0
-    CloudMain.Visible = true
-    TS:Create(uiScale, TweenInfo.new(0.7, Enum.EasingStyle.Elastic, Enum.EasingDirection.Out), {Scale = UI_CONFIG.Scale}):Play()
+    CloudMain.BackgroundTransparency = 1
+    TS:Create(uiScale, TweenInfo.new(0.65, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = UI_CONFIG.Scale}):Play()
+    TS:Create(CloudMain, TweenInfo.new(0.3), {BackgroundTransparency = 0.1}):Play()
 
     return window
 end
