@@ -1,4 +1,4 @@
-Repeat task.wait() until game:IsLoaded()
+repeat task.wait() until game:IsLoaded()
 
 local HttpService = game:GetService("HttpService")
 local UserInputService = game:GetService("UserInputService")
