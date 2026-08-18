@@ -125,14 +125,13 @@ local UI_CONFIG = {
     Palette = "赛博朋克 (Cyberpunk)",
     MarqueeSpeed = 1,
     BGImage = "",
-    BGTransparency = 0,
+    BGTransparency = 0.85,
     GlowEnabled = false,
     GlowColor = "赛博青蓝",
     GlowIntensity = 50,
     FontMode = "Gotham Bold (加粗)",
     FontColorMode = "默认深色",
-    FontSizeOffset = 0,
-    UseRandomBG = true
+    FontSizeOffset = 0
 }
 
 if isfile and isfile(ConfigPath) then
@@ -142,26 +141,6 @@ if isfile and isfile(ConfigPath) then
             UI_CONFIG[k] = v
         end
     end)
-end
-
-if UI_CONFIG.BGTransparency == 0.85 then
-    UI_CONFIG.BGTransparency = 0
-end
-
-local RandomURLs = {
-    "https://raw.githubusercontent.com/roblox-ye/QQ515966991/refs/heads/main/.2.jpg",
-    "https://raw.githubusercontent.com/roblox-ye/QQ515966991/refs/heads/main/temp_1787024048668_1787024048754.jpg"
-}
-math.randomseed(tick() % 1 * 1000000)
-local SelectedBGIndex = math.random(1, 2)
-local SelectedBGURL = RandomURLs[SelectedBGIndex]
-
-if UI_CONFIG.UseRandomBG then
-    if SelectedBGIndex == 1 then
-        UI_CONFIG.FontColorMode = "纯净洁白"
-    elseif SelectedBGIndex == 2 then
-        UI_CONFIG.FontColorMode = "默认深色"
-    end
 end
 
 local function SaveConfig()
@@ -301,7 +280,6 @@ function library.new(library, name, theme)
     NameTransparency = 0
 
     local dogent = Instance.new("ScreenGui")
-    dogent.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     local CloudMain = Instance.new("Frame")
     local TabMain = Instance.new("Frame")
     local MainC = Instance.new("UICorner")
@@ -332,88 +310,25 @@ function library.new(library, name, theme)
     CloudMain.BorderColor3 = MainColor
     CloudMain.Position = UDim2.new(0.5, 0, 0.4, 0)
     CloudMain.Size = UDim2.new(0, 482, 0, 369)
-    CloudMain.BackgroundTransparency = 1
+    CloudMain.BackgroundTransparency = 0.1
     CloudMain.Visible = true 
     CloudMain.Active = true
     CloudMain.Draggable = true   
     drag(CloudMain)
-
-    local BasePlate = Instance.new("Frame")
-    BasePlate.Name = "BasePlate"
-    BasePlate.Parent = CloudMain
-    BasePlate.Size = UDim2.new(1, 0, 1, 0)
-    BasePlate.BackgroundColor3 = Background
-    BasePlate.BackgroundTransparency = 0.1
-    BasePlate.ZIndex = 1
-    
-    local BasePlateCorner = Instance.new("UICorner")
-    BasePlateCorner.CornerRadius = UDim.new(0, 14)
-    BasePlateCorner.Parent = BasePlate
 
     local CustomBG = Instance.new("ImageLabel")
     CustomBG.Name = "YeCustomBackground"
     CustomBG.Parent = CloudMain
     CustomBG.Size = UDim2.new(1, 0, 1, 0)
     CustomBG.BackgroundTransparency = 1
-    CustomBG.ZIndex = 2 
+    CustomBG.ZIndex = 0 
     CustomBG.Image = UI_CONFIG.BGImage or ""
-    CustomBG.ImageTransparency = UI_CONFIG.BGTransparency or 0
+    CustomBG.ImageTransparency = UI_CONFIG.BGTransparency or 0.85 
     CustomBG.ScaleType = Enum.ScaleType.Crop 
     
     local CustomBGCorner = Instance.new("UICorner")
     CustomBGCorner.CornerRadius = UDim.new(0, 14)
     CustomBGCorner.Parent = CustomBG
-
-    local RefreshGlobalUI
-
-    local function GetLocalRandomBG(url, index)
-        local folderName = "YE_UI_Assets"
-        local fileName = folderName .. "/bg_" .. tostring(index) .. ".jpg"
-        if not isfolder(folderName) then makefolder(folderName) end
-        if not isfile(fileName) then
-            local s, d = pcall(function() return game:HttpGet(url) end)
-            if s and d then writefile(fileName, d) else return "" end
-        end
-        return getcustomasset(fileName)
-    end
-
-    local function UpdateBackgroundDisplay()
-        if not CustomBG then return end
-        local hasImage = false
-        if UI_CONFIG.UseRandomBG then
-            local assetId = GetLocalRandomBG(SelectedBGURL, SelectedBGIndex)
-            if assetId ~= "" then 
-                CustomBG.Image = assetId 
-                hasImage = true
-            end
-            CustomBG.ImageTransparency = UI_CONFIG.BGTransparency or 0
-        else
-            if UI_CONFIG.BGImage and UI_CONFIG.BGImage ~= "" and UI_CONFIG.BGImage ~= "0" then
-                CustomBG.Image = string.match(UI_CONFIG.BGImage, "^%d+$") and "rbxassetid://" .. UI_CONFIG.BGImage or UI_CONFIG.BGImage
-                hasImage = true
-            else
-                CustomBG.Image = ""
-            end
-            CustomBG.ImageTransparency = UI_CONFIG.BGTransparency or 0
-        end
-        
-        if hasImage then
-            BasePlate.BackgroundTransparency = 1
-            interfaceTransparency = 0.8
-            if SB then SB.BackgroundTransparency = 0.8 end
-            if Side then Side.BackgroundTransparency = 0.8 end
-        else
-            BasePlate.BackgroundTransparency = 0.1
-            interfaceTransparency = 0.2
-            if SB then SB.BackgroundTransparency = 0.7 end
-            if Side then Side.BackgroundTransparency = 0.7 end
-        end
-        if RefreshGlobalUI then RefreshGlobalUI() end
-    end
-
-    task.spawn(function()
-        UpdateBackgroundDisplay()
-    end)
 
     local uiScale = Instance.new("UIScale")
     uiScale.Name = "YeUIScale"
@@ -691,7 +606,7 @@ function library.new(library, name, theme)
     SB.BackgroundColor3 = TextColor
     SB.BorderColor3 = MainColor
     SB.Size = UDim2.new(0, 8, 1, 0)
-    SB.BackgroundTransparency = 0.700
+    SB.Transparency = 0.700
 
     SBC.CornerRadius = UDim.new(0, 14)
     SBC.Parent = SB
@@ -703,7 +618,7 @@ function library.new(library, name, theme)
     Side.ClipsDescendants = true
     Side.Position = UDim2.new(1, 0, 0, 0)
     Side.Size = UDim2.new(0, 110, 1, 0)
-    Side.BackgroundTransparency = 0.700
+    Side.Transparency = 0.700
 
     SideG.Color = ColorSequence.new {ColorSequenceKeypoint.new(0.00, zyColor), ColorSequenceKeypoint.new(1.00, zyColor)}
     SideG.Rotation = 90
@@ -895,28 +810,18 @@ function library.new(library, name, theme)
 
     Open.MouseButton1Click:Connect(function() toggleui() end)
 
-    RefreshGlobalUI = function()
+    local function RefreshGlobalUI()
         local selectedFont = FontTypes[UI_CONFIG.FontMode] or Enum.Font.GothamBold
         local selectedColor = FontColorPresets[UI_CONFIG.FontColorMode] or Color3.fromRGB(255, 255, 255)
         local sizeOffset = UI_CONFIG.FontSizeOffset or 0
 
         for _, obj in ipairs(dogent:GetDescendants()) do
-            if obj:GetAttribute("IsControlBG") then
-                obj.BackgroundTransparency = interfaceTransparency
-            end
-            
             if obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
                 if not obj:GetAttribute("BaseTextSize") then
                     obj:SetAttribute("BaseTextSize", obj.TextSize)
                 end
                 
-                if obj:IsA("TextBox") then
-                    obj.PlaceholderColor3 = selectedColor
-                end
-                
-                if obj.Name == "Open" or obj.Name == "ScriptTitle" then
-                    obj.TextColor3 = Color3.fromRGB(30, 30, 30)
-                elseif obj.Name ~= "Icon" and obj.Name ~= "Avatar" and obj.Name ~= "Crown" and obj.Name ~= "StatsText" then
+                if obj.Name ~= "Icon" and obj.Name ~= "Avatar" and obj.Name ~= "Crown" and obj.Name ~= "StatsText" then
                     obj.Font = selectedFont
                     obj.TextColor3 = selectedColor
                     obj.TextSize = obj:GetAttribute("BaseTextSize") + sizeOffset
@@ -1145,10 +1050,9 @@ function library.new(library, name, theme)
                 Btn.TextColor3 = TextColor
                 Btn.TextSize = 13.000
                 Btn.TextXAlignment = Enum.TextXAlignment.Left
-                Btn.BackgroundTransparency = interfaceTransparency
+                Btn.Transparency = interfaceTransparency
                 Btn.TextTransparency = NameTransparency
                 Btn:SetAttribute("BaseTextSize", 13)
-                Btn:SetAttribute("IsControlBG", true)
 
                 BtnC.CornerRadius = UDim.new(0, 6)
                 BtnC.Parent = Btn
@@ -1178,7 +1082,7 @@ function library.new(library, name, theme)
                 LabelModule.Size = UDim2.new(1, -4, 0, 20)
                 
                 TextLabel.Parent = LabelModule
-                TextLabel.BackgroundTransparency = interfaceTransparency
+                TextLabel.Transparency = interfaceTransparency
                 TextLabel.BackgroundColor3 = zyColor
                 TextLabel.Size = UDim2.new(1, 0, 1, 0)
                 TextLabel.Font = Enum.Font.GothamBold
@@ -1187,7 +1091,6 @@ function library.new(library, name, theme)
                 TextLabel.TextSize = 12.000
                 TextLabel.TextTransparency = NameTransparency
                 TextLabel:SetAttribute("BaseTextSize", 12)
-                TextLabel:SetAttribute("IsControlBG", true)
 
                 LabelC.CornerRadius = UDim.new(0, 6)
                 LabelC.Parent = TextLabel
@@ -1224,9 +1127,8 @@ function library.new(library, name, theme)
                 ToggleBtn.TextColor3 = TextColor
                 ToggleBtn.TextSize = 13.000
                 ToggleBtn.TextXAlignment = Enum.TextXAlignment.Left
-                ToggleBtn.BackgroundTransparency = interfaceTransparency
+                ToggleBtn.Transparency = interfaceTransparency
                 ToggleBtn:SetAttribute("BaseTextSize", 13)
-                ToggleBtn:SetAttribute("IsControlBG", true)
 
                 ToggleBtnC.CornerRadius = UDim.new(0, 6)
                 ToggleBtnC.Parent = ToggleBtn
@@ -1307,9 +1209,8 @@ function library.new(library, name, theme)
                 KeybindBtn.TextColor3 = TextColor
                 KeybindBtn.TextSize = 13.000
                 KeybindBtn.TextXAlignment = Enum.TextXAlignment.Left
-                KeybindBtn.BackgroundTransparency = interfaceTransparency
+                KeybindBtn.Transparency = interfaceTransparency
                 KeybindBtn:SetAttribute("BaseTextSize", 13)
-                KeybindBtn:SetAttribute("IsControlBG", true)
 
                 KeybindBtnC.CornerRadius = UDim.new(0, 6)
                 KeybindBtnC.Parent = KeybindBtn
@@ -1390,9 +1291,8 @@ function library.new(library, name, theme)
                 TextboxBack.TextColor3 = TextColor
                 TextboxBack.TextSize = 13.000
                 TextboxBack.TextXAlignment = Enum.TextXAlignment.Left
-                TextboxBack.BackgroundTransparency = interfaceTransparency
+                TextboxBack.Transparency = interfaceTransparency
                 TextboxBack:SetAttribute("BaseTextSize", 13)
-                TextboxBack:SetAttribute("IsControlBG", true)
 
                 TextboxBackC.CornerRadius = UDim.new(0, 6)
                 TextboxBackC.Parent = TextboxBack
@@ -1484,9 +1384,8 @@ function library.new(library, name, theme)
                 SliderBack.TextColor3 = TextColor
                 SliderBack.TextSize = 13.000
                 SliderBack.TextXAlignment = Enum.TextXAlignment.Left
-                SliderBack.BackgroundTransparency = interfaceTransparency
+                SliderBack.Transparency = interfaceTransparency
                 SliderBack:SetAttribute("BaseTextSize", 13)
-                SliderBack:SetAttribute("IsControlBG", true)
 
                 SliderBackC.CornerRadius = UDim.new(0, 6)
                 SliderBackC.Parent = SliderBack
@@ -1656,8 +1555,7 @@ function library.new(library, name, theme)
                 DropdownTop.Size = UDim2.new(1, 0, 0, 30)
                 DropdownTop.AutoButtonColor = false
                 DropdownTop.Text = ""
-                DropdownTop.BackgroundTransparency = interfaceTransparency
-                DropdownTop:SetAttribute("IsControlBG", true)
+                DropdownTop.Transparency = interfaceTransparency
 
                 DropdownTopC.CornerRadius = UDim.new(0, 6)
                 DropdownTopC.Parent = DropdownTop
@@ -1738,9 +1636,7 @@ function library.new(library, name, theme)
                     Option.TextColor3 = TextColor
                     Option.TextSize = 12.000
                     Option.Visible = open
-                    Option.BackgroundTransparency = interfaceTransparency
                     Option:SetAttribute("BaseTextSize", 12)
-                    Option:SetAttribute("IsControlBG", true)
 
                     OptionC.CornerRadius = UDim.new(0, 6)
                     OptionC.Parent = Option
@@ -1863,11 +1759,6 @@ function library.new(library, name, theme)
         
         sec:Label("提示：UI卡住可按 左Alt + S 键重置大小")
 
-        sec:Toggle("开启随机背景图功能", "UseRandomBGToggle", UI_CONFIG.UseRandomBG, function(v)
-            UI_CONFIG.UseRandomBG = v
-            UpdateBackgroundDisplay()
-        end)
-
         sec:Toggle("开启边框流光", "UIMarqueeToggle", UI_CONFIG.MarqueeEnabled, function(v)
             UI_CONFIG.MarqueeEnabled = v
         end)
@@ -1900,24 +1791,26 @@ function library.new(library, name, theme)
             UI_CONFIG.MarqueeSpeed = v / 10
         end)
 
-        sec:Textbox("自定义背景图 (需填Image ID)", "CustomBGImage", UI_CONFIG.BGImage, function(val)
+        sec:Textbox("自定义背景图 (填ID,清空填0)", "CustomBGImage", UI_CONFIG.BGImage, function(val)
             if val == "" or val == "0" then
                 CustomBG.Image = ""
                 UI_CONFIG.BGImage = ""
-            else
-                local finalId = val
-                if string.match(val, "^%d+$") then
-                    finalId = "rbxassetid://" .. val
-                end
-                CustomBG.Image = finalId
-                UI_CONFIG.BGImage = finalId
+                return
             end
-            UpdateBackgroundDisplay()
+            
+            local finalId = val
+            
+            if string.match(val, "^%d+$") then
+                finalId = "rbxassetid://" .. val
+            end
+            
+            CustomBG.Image = finalId
+            UI_CONFIG.BGImage = finalId
         end)
 
-        sec:Slider("背景不透明度", "CustomBGAlpha", math.floor((1 - (UI_CONFIG.BGTransparency or 0)) * 100), 0, 100, false, function(v)
+        sec:Slider("背景不透明度", "CustomBGAlpha", math.floor((1 - (UI_CONFIG.BGTransparency or 0.85)) * 100), 0, 100, false, function(v)
             local trans = 1 - (v / 100)
-            if CustomBG then CustomBG.ImageTransparency = trans end
+            CustomBG.ImageTransparency = trans
             UI_CONFIG.BGTransparency = trans
         end)
 
@@ -1937,14 +1830,13 @@ function library.new(library, name, theme)
                 UI_CONFIG.Palette = "赛博朋克 (Cyberpunk)"
                 UI_CONFIG.MarqueeSpeed = 1
                 UI_CONFIG.BGImage = ""
-                UI_CONFIG.BGTransparency = 0
+                UI_CONFIG.BGTransparency = 0.85
                 UI_CONFIG.GlowEnabled = false
                 UI_CONFIG.GlowColor = "赛博青蓝"
                 UI_CONFIG.GlowIntensity = 50
                 UI_CONFIG.FontMode = "Gotham Bold (加粗)"
                 UI_CONFIG.FontColorMode = "默认深色"
                 UI_CONFIG.FontSizeOffset = 0
-                UI_CONFIG.UseRandomBG = true
                 
                 lastSavedScale = DefaultScale
                 uiScale.Scale = DefaultScale
@@ -1953,9 +1845,7 @@ function library.new(library, name, theme)
                 end
                 MainStrokeGradient.Color = Palettes["赛博朋克 (Cyberpunk)"]
                 CustomBG.Image = ""
-                CustomBG.ImageTransparency = 0
-                
-                UpdateBackgroundDisplay()
+                CustomBG.ImageTransparency = 0.85
                 RefreshGlobalUI()
                 
                 if isfile and isfile(ConfigPath) and delfile then
@@ -1973,16 +1863,15 @@ function library.new(library, name, theme)
 
     task.defer(function()
         window:BuildUISettingsTab()
-        UpdateBackgroundDisplay()
         RefreshGlobalUI()
     end)
     
     CloudMain.Position = UDim2.new(0.5, 0, 0.4, 0)
     uiScale.Scale = 0
+    CloudMain.BackgroundTransparency = 1
     CloudMain.Visible = true
     TS:Create(uiScale, TweenInfo.new(0.7, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = UI_CONFIG.Scale}):Play()
-    
-    TS:Create(CloudMain, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
+    TS:Create(CloudMain, TweenInfo.new(0.3), {BackgroundTransparency = 0.1}):Play()
 
     return window
 end
