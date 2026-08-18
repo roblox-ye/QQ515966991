@@ -125,14 +125,13 @@ local UI_CONFIG = {
     Palette = "赛博朋克 (Cyberpunk)",
     MarqueeSpeed = 1,
     BGImage = "",
-    BGTransparency = 0,
+    BGTransparency = 0, -- 默认改为0 (100%清晰不透明)
     GlowEnabled = false,
     GlowColor = "赛博青蓝",
     GlowIntensity = 50,
     FontMode = "Gotham Bold (加粗)",
     FontColorMode = "默认深色",
-    FontSizeOffset = 0,
-    UseRandomBG = true
+    FontSizeOffset = 0
 }
 
 if isfile and isfile(ConfigPath) then
@@ -143,14 +142,6 @@ if isfile and isfile(ConfigPath) then
         end
     end)
 end
-
-local RandomURLs = {
-    "https://raw.githubusercontent.com/roblox-ye/QQ515966991/refs/heads/main/.2.jpg",
-    "https://raw.githubusercontent.com/roblox-ye/QQ515966991/refs/heads/main/temp_1787024048668_1787024048754.jpg"
-}
-math.randomseed(tick() % 1 * 1000000)
-local SelectedBGIndex = math.random(1, 2)
-local SelectedBGURL = RandomURLs[SelectedBGIndex]
 
 local function SaveConfig()
     if writefile then
@@ -286,12 +277,11 @@ function library.new(library, name, theme)
     beijingColor = Color3.fromRGB(225, 225, 230)
     TextColor = Color3.fromRGB(30, 30, 30)
     
-    -- 默认控件透明度设定
+    -- 全局控件透明度设置
     interfaceTransparency = 0.200
     NameTransparency = 0
 
     local dogent = Instance.new("ScreenGui")
-    dogent.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     local CloudMain = Instance.new("Frame")
     local TabMain = Instance.new("Frame")
     local MainC = Instance.new("UICorner")
@@ -322,7 +312,7 @@ function library.new(library, name, theme)
     CloudMain.BorderColor3 = MainColor
     CloudMain.Position = UDim2.new(0.5, 0, 0.4, 0)
     CloudMain.Size = UDim2.new(0, 482, 0, 369)
-    -- 回归自带的0.1透明度，专门用来罩住底下的辉光
+    -- 默认回归最原初的 0.1 不透明度 (关闭背景时使用，罩住辉光)
     CloudMain.BackgroundTransparency = 0.1
     CloudMain.Visible = true 
     CloudMain.Active = true
@@ -334,66 +324,36 @@ function library.new(library, name, theme)
     CustomBG.Parent = CloudMain
     CustomBG.Size = UDim2.new(1, 0, 1, 0)
     CustomBG.BackgroundTransparency = 1
+    CustomBG.ZIndex = 0 
+    CustomBG.Image = UI_CONFIG.BGImage or ""
+    CustomBG.ImageTransparency = UI_CONFIG.BGTransparency or 0
     CustomBG.ScaleType = Enum.ScaleType.Crop 
     
     local CustomBGCorner = Instance.new("UICorner")
     CustomBGCorner.CornerRadius = UDim.new(0, 14)
     CustomBGCorner.Parent = CustomBG
 
-    -- 前置声明全局刷新函数，以便 UpdateBackgroundDisplay 中调用
+    -- 提前声明全局UI刷新函数
     local RefreshGlobalUI
 
-    local function GetLocalRandomBG(url, index)
-        local folderName = "YE_UI_Assets"
-        local fileName = folderName .. "/bg_" .. tostring(index) .. ".jpg"
-        if not isfolder(folderName) then makefolder(folderName) end
-        if not isfile(fileName) then
-            local s, d = pcall(function() return game:HttpGet(url) end)
-            if s and d then writefile(fileName, d) else return "" end
-        end
-        return getcustomasset(fileName)
-    end
-
+    -- 动态更新透明度与背景逻辑
     local function UpdateBackgroundDisplay()
-        if not CustomBG then return end
-        local hasImage = false
-        if UI_CONFIG.UseRandomBG then
-            local assetId = GetLocalRandomBG(SelectedBGURL, SelectedBGIndex)
-            if assetId ~= "" then 
-                CustomBG.Image = assetId 
-                hasImage = true
-            end
-            CustomBG.ImageTransparency = UI_CONFIG.BGTransparency or 0
-        else
-            if UI_CONFIG.BGImage and UI_CONFIG.BGImage ~= "" and UI_CONFIG.BGImage ~= "0" then
-                CustomBG.Image = string.match(UI_CONFIG.BGImage, "^%d+$") and "rbxassetid://" .. UI_CONFIG.BGImage or UI_CONFIG.BGImage
-                hasImage = true
-            else
-                CustomBG.Image = ""
-            end
-            CustomBG.ImageTransparency = UI_CONFIG.BGTransparency or 0
-        end
-        
-        -- 根据是否有背景图，动态分配界面透明度
+        local hasImage = (CustomBG.Image ~= "")
         if hasImage then
-            CloudMain.BackgroundTransparency = 1
-            interfaceTransparency = 0.8 -- 背景透明度0.8，即20%的不透明度（透出背景图）
+            -- 打开背景图功能时
+            CloudMain.BackgroundTransparency = 1 -- 彻底变透，删除白雾
+            interfaceTransparency = 0.8 -- 所有控件变成 0.8 透明度，不再遮挡背景
             if SB then SB.BackgroundTransparency = 0.8 end
             if Side then Side.BackgroundTransparency = 0.8 end
         else
-            CloudMain.BackgroundTransparency = 0.1 -- 恢复为0.1，完美遮住辉光底色
-            interfaceTransparency = 0.2 -- 默认80%的不透明度控件
+            -- 关闭背景图功能时，所有元素全部回归最初原本样子
+            CloudMain.BackgroundTransparency = 0.1 -- 回归 0.1 透明度白膜，罩住背后辉光
+            interfaceTransparency = 0.200 -- 控件回归 0.2 透明度
             if SB then SB.BackgroundTransparency = 0.7 end
             if Side then Side.BackgroundTransparency = 0.7 end
         end
-        
-        -- 调用全局UI刷新以应用所有的控件透明度更改
         if RefreshGlobalUI then RefreshGlobalUI() end
     end
-
-    task.spawn(function()
-        UpdateBackgroundDisplay()
-    end)
 
     local uiScale = Instance.new("UIScale")
     uiScale.Name = "YeUIScale"
@@ -881,11 +841,11 @@ function library.new(library, name, theme)
         local sizeOffset = UI_CONFIG.FontSizeOffset or 0
 
         for _, obj in ipairs(dogent:GetDescendants()) do
-            -- 动态调整挂载了 IsControlBG 的控件背景透明度，防盖住背景图
+            -- 动态更新带有此标签控件的透明度
             if obj:GetAttribute("IsControlBG") then
                 obj.BackgroundTransparency = interfaceTransparency
             end
-            
+
             if obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
                 if not obj:GetAttribute("BaseTextSize") then
                     obj:SetAttribute("BaseTextSize", obj.TextSize)
@@ -1838,11 +1798,6 @@ function library.new(library, name, theme)
         
         sec:Label("提示：UI卡住可按 左Alt + S 键重置大小")
 
-        sec:Toggle("开启随机背景图功能", "UseRandomBGToggle", UI_CONFIG.UseRandomBG, function(v)
-            UI_CONFIG.UseRandomBG = v
-            UpdateBackgroundDisplay()
-        end)
-
         sec:Toggle("开启边框流光", "UIMarqueeToggle", UI_CONFIG.MarqueeEnabled, function(v)
             UI_CONFIG.MarqueeEnabled = v
         end)
@@ -1876,22 +1831,24 @@ function library.new(library, name, theme)
         end)
 
         sec:Textbox("自定义背景图 (填ID,清空填0)", "CustomBGImage", UI_CONFIG.BGImage, function(val)
-            local finalId = val
             if val == "" or val == "0" then
-                finalId = ""
-            elseif string.match(val, "^%d+$") then
-                finalId = "rbxassetid://" .. val
+                CustomBG.Image = ""
+                UI_CONFIG.BGImage = ""
+            else
+                local finalId = val
+                if string.match(val, "^%d+$") then
+                    finalId = "rbxassetid://" .. val
+                end
+                CustomBG.Image = finalId
+                UI_CONFIG.BGImage = finalId
             end
-            UI_CONFIG.BGImage = finalId
-            if not UI_CONFIG.UseRandomBG then
-                UpdateBackgroundDisplay()
-            end
+            -- 调用新写的核心函数，检测有无图片，动态开关白雾、修改控件透明度
+            UpdateBackgroundDisplay()
         end)
 
         sec:Slider("背景不透明度", "CustomBGAlpha", math.floor((1 - (UI_CONFIG.BGTransparency or 0)) * 100), 0, 100, false, function(v)
             local trans = 1 - (v / 100)
-            local bgTarget = CloudMain:FindFirstChild("YeCustomBackground")
-            if bgTarget then bgTarget.ImageTransparency = trans end
+            CustomBG.ImageTransparency = trans
             UI_CONFIG.BGTransparency = trans
         end)
 
@@ -1918,7 +1875,6 @@ function library.new(library, name, theme)
                 UI_CONFIG.FontMode = "Gotham Bold (加粗)"
                 UI_CONFIG.FontColorMode = "默认深色"
                 UI_CONFIG.FontSizeOffset = 0
-                UI_CONFIG.UseRandomBG = true
                 
                 lastSavedScale = DefaultScale
                 uiScale.Scale = DefaultScale
@@ -1926,8 +1882,11 @@ function library.new(library, name, theme)
                     scaleSliderFuncs:SetValue(DefaultScale * 100) 
                 end
                 MainStrokeGradient.Color = Palettes["赛博朋克 (Cyberpunk)"]
-                RefreshGlobalUI()
+                CustomBG.Image = ""
+                CustomBG.ImageTransparency = 0
+                
                 UpdateBackgroundDisplay()
+                RefreshGlobalUI()
                 
                 if isfile and isfile(ConfigPath) and delfile then
                     pcall(function() delfile(ConfigPath) end)
@@ -1944,12 +1903,12 @@ function library.new(library, name, theme)
 
     task.defer(function()
         window:BuildUISettingsTab()
+        UpdateBackgroundDisplay()
         RefreshGlobalUI()
     end)
     
     CloudMain.Position = UDim2.new(0.5, 0, 0.4, 0)
     uiScale.Scale = 0
-    CloudMain.BackgroundTransparency = 1
     CloudMain.Visible = true
     TS:Create(uiScale, TweenInfo.new(0.7, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = UI_CONFIG.Scale}):Play()
     local targetTrans = (CustomBG.Image ~= "") and 1 or 0.1
