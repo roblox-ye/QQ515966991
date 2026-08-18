@@ -131,7 +131,8 @@ local UI_CONFIG = {
     GlowIntensity = 50,
     FontMode = "Gotham Bold (加粗)",
     FontColorMode = "默认深色",
-    FontSizeOffset = 0
+    FontSizeOffset = 0,
+    UseRandomBG = true
 }
 
 if isfile and isfile(ConfigPath) then
@@ -141,6 +142,26 @@ if isfile and isfile(ConfigPath) then
             UI_CONFIG[k] = v
         end
     end)
+end
+
+local RandomURLs = {
+    "https://raw.githubusercontent.com/roblox-ye/QQ515966991/refs/heads/main/.2.jpg",
+    "https://raw.githubusercontent.com/roblox-ye/QQ515966991/refs/heads/main/temp_1787024048668_1787024048754.jpg"
+}
+math.randomseed(tick() % 1 * 1000000)
+local SelectedBGIndex = math.random(1, 2)
+local SelectedBGURL = RandomURLs[SelectedBGIndex]
+
+if UI_CONFIG.UseRandomBG then
+    if SelectedBGIndex == 1 then
+        UI_CONFIG.Palette = "冰蓝极光 (Aurora)"
+        UI_CONFIG.FontColorMode = "默认深色"
+        UI_CONFIG.BGTransparency = 0.4
+    else
+        UI_CONFIG.Palette = "熔岩烈火 (Magma)"
+        UI_CONFIG.FontColorMode = "纯净洁白"
+        UI_CONFIG.BGTransparency = 0.2
+    end
 end
 
 local function SaveConfig()
@@ -322,13 +343,42 @@ function library.new(library, name, theme)
     CustomBG.Size = UDim2.new(1, 0, 1, 0)
     CustomBG.BackgroundTransparency = 1
     CustomBG.ZIndex = 0 
-    CustomBG.Image = UI_CONFIG.BGImage or ""
-    CustomBG.ImageTransparency = UI_CONFIG.BGTransparency or 0.85 
     CustomBG.ScaleType = Enum.ScaleType.Crop 
     
     local CustomBGCorner = Instance.new("UICorner")
     CustomBGCorner.CornerRadius = UDim.new(0, 14)
     CustomBGCorner.Parent = CustomBG
+
+    local function GetLocalRandomBG(url, index)
+        local folderName = "YE_UI_Assets"
+        local fileName = folderName .. "/bg_" .. tostring(index) .. ".jpg"
+        if not isfolder(folderName) then makefolder(folderName) end
+        if not isfile(fileName) then
+            local s, d = pcall(function() return game:HttpGet(url) end)
+            if s and d then writefile(fileName, d) else return "" end
+        end
+        return getcustomasset(fileName)
+    end
+
+    local function UpdateBackgroundDisplay()
+        if not CustomBG then return end
+        if UI_CONFIG.UseRandomBG then
+            local assetId = GetLocalRandomBG(SelectedBGURL, SelectedBGIndex)
+            if assetId ~= "" then CustomBG.Image = assetId end
+            CustomBG.ImageTransparency = UI_CONFIG.BGTransparency
+        else
+            if UI_CONFIG.BGImage and UI_CONFIG.BGImage ~= "" and UI_CONFIG.BGImage ~= "0" then
+                CustomBG.Image = string.match(UI_CONFIG.BGImage, "^%d+$") and "rbxassetid://" .. UI_CONFIG.BGImage or UI_CONFIG.BGImage
+            else
+                CustomBG.Image = ""
+            end
+            CustomBG.ImageTransparency = UI_CONFIG.BGTransparency or 0.85
+        end
+    end
+
+    task.spawn(function()
+        UpdateBackgroundDisplay()
+    end)
 
     local uiScale = Instance.new("UIScale")
     uiScale.Name = "YeUIScale"
@@ -785,7 +835,7 @@ function library.new(library, name, theme)
     Open.Position = UDim2.new(0.01, 0, 0.3, 0)
     Open.Size = UDim2.new(0, 50, 0, 50)
     Open.Font = Enum.Font.GothamBold
-    Open.Text = "叶脚本"
+    Open.Text = "YE"
     Open.TextColor3 = TextColor
     Open.TextSize = 14.000
     Open.Active = true
@@ -1759,6 +1809,28 @@ function library.new(library, name, theme)
         
         sec:Label("提示：UI卡住可按 左Alt + S 键重置大小")
 
+        sec:Toggle("开启随机背景图功能", "UseRandomBGToggle", UI_CONFIG.UseRandomBG, function(v)
+            UI_CONFIG.UseRandomBG = v
+            if v then
+                if SelectedBGIndex == 1 then
+                    UI_CONFIG.Palette = "冰蓝极光 (Aurora)"
+                    UI_CONFIG.FontColorMode = "默认深色"
+                    UI_CONFIG.BGTransparency = 0.4
+                else
+                    UI_CONFIG.Palette = "熔岩烈火 (Magma)"
+                    UI_CONFIG.FontColorMode = "纯净洁白"
+                    UI_CONFIG.BGTransparency = 0.2
+                end
+            else
+                UI_CONFIG.Palette = "赛博朋克 (Cyberpunk)"
+                UI_CONFIG.FontColorMode = "默认深色"
+                UI_CONFIG.BGTransparency = 0.85
+            end
+            MainStrokeGradient.Color = Palettes[UI_CONFIG.Palette]
+            RefreshGlobalUI()
+            UpdateBackgroundDisplay()
+        end)
+
         sec:Toggle("开启边框流光", "UIMarqueeToggle", UI_CONFIG.MarqueeEnabled, function(v)
             UI_CONFIG.MarqueeEnabled = v
         end)
@@ -1792,25 +1864,21 @@ function library.new(library, name, theme)
         end)
 
         sec:Textbox("自定义背景图 (填ID,清空填0)", "CustomBGImage", UI_CONFIG.BGImage, function(val)
-            if val == "" or val == "0" then
-                CustomBG.Image = ""
-                UI_CONFIG.BGImage = ""
-                return
-            end
-            
             local finalId = val
-            
-            if string.match(val, "^%d+$") then
+            if val == "" or val == "0" then
+                finalId = ""
+            elseif string.match(val, "^%d+$") then
                 finalId = "rbxassetid://" .. val
             end
-            
-            CustomBG.Image = finalId
             UI_CONFIG.BGImage = finalId
+            if not UI_CONFIG.UseRandomBG then
+                UpdateBackgroundDisplay()
+            end
         end)
 
         sec:Slider("背景不透明度", "CustomBGAlpha", math.floor((1 - (UI_CONFIG.BGTransparency or 0.85)) * 100), 0, 100, false, function(v)
             local trans = 1 - (v / 100)
-            CustomBG.ImageTransparency = trans
+            if CustomBG then CustomBG.ImageTransparency = trans end
             UI_CONFIG.BGTransparency = trans
         end)
 
@@ -1837,6 +1905,7 @@ function library.new(library, name, theme)
                 UI_CONFIG.FontMode = "Gotham Bold (加粗)"
                 UI_CONFIG.FontColorMode = "默认深色"
                 UI_CONFIG.FontSizeOffset = 0
+                UI_CONFIG.UseRandomBG = true
                 
                 lastSavedScale = DefaultScale
                 uiScale.Scale = DefaultScale
@@ -1844,9 +1913,8 @@ function library.new(library, name, theme)
                     scaleSliderFuncs:SetValue(DefaultScale * 100) 
                 end
                 MainStrokeGradient.Color = Palettes["赛博朋克 (Cyberpunk)"]
-                CustomBG.Image = ""
-                CustomBG.ImageTransparency = 0.85
                 RefreshGlobalUI()
+                UpdateBackgroundDisplay()
                 
                 if isfile and isfile(ConfigPath) and delfile then
                     pcall(function() delfile(ConfigPath) end)
