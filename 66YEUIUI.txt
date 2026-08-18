@@ -156,6 +156,14 @@ math.randomseed(tick() % 1 * 1000000)
 local SelectedBGIndex = math.random(1, 2)
 local SelectedBGURL = RandomURLs[SelectedBGIndex]
 
+if UI_CONFIG.UseRandomBG then
+    if SelectedBGIndex == 1 then
+        UI_CONFIG.FontColorMode = "纯净洁白"
+    elseif SelectedBGIndex == 2 then
+        UI_CONFIG.FontColorMode = "默认深色"
+    end
+end
+
 local function SaveConfig()
     if writefile then
         pcall(function()
@@ -324,17 +332,32 @@ function library.new(library, name, theme)
     CloudMain.BorderColor3 = MainColor
     CloudMain.Position = UDim2.new(0.5, 0, 0.4, 0)
     CloudMain.Size = UDim2.new(0, 482, 0, 369)
-    CloudMain.BackgroundTransparency = 0.1
+    CloudMain.BackgroundTransparency = 1
     CloudMain.Visible = true 
     CloudMain.Active = true
     CloudMain.Draggable = true   
     drag(CloudMain)
+
+    local BasePlate = Instance.new("Frame")
+    BasePlate.Name = "BasePlate"
+    BasePlate.Parent = CloudMain
+    BasePlate.Size = UDim2.new(1, 0, 1, 0)
+    BasePlate.BackgroundColor3 = Background
+    BasePlate.BackgroundTransparency = 0.1
+    BasePlate.ZIndex = 1
+    
+    local BasePlateCorner = Instance.new("UICorner")
+    BasePlateCorner.CornerRadius = UDim.new(0, 14)
+    BasePlateCorner.Parent = BasePlate
 
     local CustomBG = Instance.new("ImageLabel")
     CustomBG.Name = "YeCustomBackground"
     CustomBG.Parent = CloudMain
     CustomBG.Size = UDim2.new(1, 0, 1, 0)
     CustomBG.BackgroundTransparency = 1
+    CustomBG.ZIndex = 2 
+    CustomBG.Image = UI_CONFIG.BGImage or ""
+    CustomBG.ImageTransparency = UI_CONFIG.BGTransparency or 0
     CustomBG.ScaleType = Enum.ScaleType.Crop 
     
     local CustomBGCorner = Instance.new("UICorner")
@@ -375,12 +398,12 @@ function library.new(library, name, theme)
         end
         
         if hasImage then
-            CloudMain.BackgroundTransparency = 1
+            BasePlate.BackgroundTransparency = 1
             interfaceTransparency = 0.8
             if SB then SB.BackgroundTransparency = 0.8 end
             if Side then Side.BackgroundTransparency = 0.8 end
         else
-            CloudMain.BackgroundTransparency = 0.1
+            BasePlate.BackgroundTransparency = 0.1
             interfaceTransparency = 0.2
             if SB then SB.BackgroundTransparency = 0.7 end
             if Side then Side.BackgroundTransparency = 0.7 end
@@ -887,7 +910,13 @@ function library.new(library, name, theme)
                     obj:SetAttribute("BaseTextSize", obj.TextSize)
                 end
                 
-                if obj.Name ~= "Icon" and obj.Name ~= "Avatar" and obj.Name ~= "Crown" and obj.Name ~= "StatsText" then
+                if obj:IsA("TextBox") then
+                    obj.PlaceholderColor3 = selectedColor
+                end
+                
+                if obj.Name == "Open" or obj.Name == "ScriptTitle" then
+                    obj.TextColor3 = Color3.fromRGB(30, 30, 30)
+                elseif obj.Name ~= "Icon" and obj.Name ~= "Avatar" and obj.Name ~= "Crown" and obj.Name ~= "StatsText" then
                     obj.Font = selectedFont
                     obj.TextColor3 = selectedColor
                     obj.TextSize = obj:GetAttribute("BaseTextSize") + sizeOffset
@@ -1871,17 +1900,19 @@ function library.new(library, name, theme)
             UI_CONFIG.MarqueeSpeed = v / 10
         end)
 
-        sec:Textbox("自定义背景图 (填ID,清空填0)", "CustomBGImage", UI_CONFIG.BGImage, function(val)
-            local finalId = val
+        sec:Textbox("自定义背景图 (需填Image ID)", "CustomBGImage", UI_CONFIG.BGImage, function(val)
             if val == "" or val == "0" then
-                finalId = ""
-            elseif string.match(val, "^%d+$") then
-                finalId = "rbxassetid://" .. val
+                CustomBG.Image = ""
+                UI_CONFIG.BGImage = ""
+            else
+                local finalId = val
+                if string.match(val, "^%d+$") then
+                    finalId = "rbxassetid://" .. val
+                end
+                CustomBG.Image = finalId
+                UI_CONFIG.BGImage = finalId
             end
-            UI_CONFIG.BGImage = finalId
-            if not UI_CONFIG.UseRandomBG then
-                UpdateBackgroundDisplay()
-            end
+            UpdateBackgroundDisplay()
         end)
 
         sec:Slider("背景不透明度", "CustomBGAlpha", math.floor((1 - (UI_CONFIG.BGTransparency or 0)) * 100), 0, 100, false, function(v)
@@ -1921,6 +1952,8 @@ function library.new(library, name, theme)
                     scaleSliderFuncs:SetValue(DefaultScale * 100) 
                 end
                 MainStrokeGradient.Color = Palettes["赛博朋克 (Cyberpunk)"]
+                CustomBG.Image = ""
+                CustomBG.ImageTransparency = 0
                 
                 UpdateBackgroundDisplay()
                 RefreshGlobalUI()
@@ -1949,8 +1982,7 @@ function library.new(library, name, theme)
     CloudMain.Visible = true
     TS:Create(uiScale, TweenInfo.new(0.7, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = UI_CONFIG.Scale}):Play()
     
-    local targetTrans = (CustomBG.Image ~= "") and 1 or 0.1
-    TS:Create(CloudMain, TweenInfo.new(0.3), {BackgroundTransparency = targetTrans}):Play()
+    TS:Create(CloudMain, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
 
     return window
 end
