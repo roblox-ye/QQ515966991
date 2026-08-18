@@ -157,11 +157,7 @@ local SelectedBGIndex = math.random(1, 2)
 local SelectedBGURL = RandomURLs[SelectedBGIndex]
 
 if UI_CONFIG.UseRandomBG then
-    if string.find(SelectedBGURL, ".2.jpg") then
-        UI_CONFIG.FontColorMode = "默认深色"
-    else
-        UI_CONFIG.FontColorMode = "纯净洁白"
-    end
+    UI_CONFIG.FontColorMode = "纯净洁白"
 end
 
 local function SaveConfig()
@@ -388,12 +384,7 @@ function library.new(library, name, theme)
                 hasImage = true
             end
             CustomBG.ImageTransparency = UI_CONFIG.BGTransparency or 0
-            
-            if string.find(SelectedBGURL, ".2.jpg") then
-                UI_CONFIG.FontColorMode = "默认深色"
-            else
-                UI_CONFIG.FontColorMode = "纯净洁白"
-            end
+            UI_CONFIG.FontColorMode = "纯净洁白"
         else
             if UI_CONFIG.BGImage and UI_CONFIG.BGImage ~= "" and UI_CONFIG.BGImage ~= "0" then
                 CustomBG.Image = string.match(UI_CONFIG.BGImage, "^%d+$") and "rbxassetid://" .. UI_CONFIG.BGImage or UI_CONFIG.BGImage
@@ -911,16 +902,16 @@ function library.new(library, name, theme)
         local selectedColor = FontColorPresets[UI_CONFIG.FontColorMode] or Color3.fromRGB(255, 255, 255)
         local sizeOffset = UI_CONFIG.FontSizeOffset or 0
         
-        local cR = selectedColor.R
-        local cG = selectedColor.G
-        local cB = selectedColor.B
-        local brightness = (cR * 299 + cG * 587 + cB * 114) / 1000
+        local hasBackground = CustomBG and CustomBG.Visible and CustomBG.Image ~= ""
         
-        local strokeColor = Color3.fromRGB(255, 255, 255)
-        if brightness > 0.5 then
-            strokeColor = Color3.fromRGB(0, 0, 0)
+        local strokeAlpha = 1
+        local titleStrokeAlpha = 1
+        local strokeColor = Color3.fromRGB(0, 0, 0)
+        
+        if hasBackground then
+            strokeAlpha = 0.25
+            titleStrokeAlpha = 0.5
         end
-        local strokeAlpha = 0.35
 
         for _, obj in ipairs(dogent:GetDescendants()) do
             if obj:GetAttribute("IsControlBG") then
@@ -936,7 +927,7 @@ function library.new(library, name, theme)
                     obj.TextColor3 = Color3.fromRGB(30, 30, 30)
                     obj.Font = selectedFont
                     obj.TextSize = obj:GetAttribute("BaseTextSize") + sizeOffset
-                    obj.TextStrokeTransparency = 0.6
+                    obj.TextStrokeTransparency = titleStrokeAlpha
                     obj.TextStrokeColor3 = Color3.fromRGB(255, 255, 255)
                 elseif obj.Name ~= "Icon" and obj.Name ~= "Avatar" and obj.Name ~= "Crown" and obj.Name ~= "StatsText" then
                     obj.Font = selectedFont
