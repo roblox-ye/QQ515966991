@@ -456,7 +456,6 @@ function library.new(library, name, theme)
     CloseBtn.Size = UDim2.new(0, 20, 0, 20)
     CloseBtn.Font = Enum.Font.GothamBold
     CloseBtn.Text = "X"
-    CloseBtn.TextColor3 = TextColor
     CloseBtn.TextSize = 14
     CloseBtn.ZIndex = 10
     CloseBtn:SetAttribute("BaseTextSize", 14)
@@ -508,7 +507,6 @@ function library.new(library, name, theme)
     ConfirmTitle.Size = UDim2.new(1, 0, 0, 30)
     ConfirmTitle.Font = Enum.Font.GothamBold
     ConfirmTitle.Text = "确认执行此操作？"
-    ConfirmTitle.TextColor3 = TextColor
     ConfirmTitle.TextSize = 14
     ConfirmTitle.TextTransparency = 1
     ConfirmTitle.ZIndex = 100
@@ -540,7 +538,6 @@ function library.new(library, name, theme)
     BtnNo.Size = UDim2.new(0, 90, 0, 32)
     BtnNo.Font = Enum.Font.GothamBold
     BtnNo.Text = "不"
-    BtnNo.TextColor3 = TextColor
     BtnNo.TextSize = 13
     BtnNo.BackgroundTransparency = 1
     BtnNo.TextTransparency = 1
@@ -774,7 +771,6 @@ function library.new(library, name, theme)
     local UserInfoStroke = Instance.new("Frame") 
     UserInfoStroke.Name = "TopLine"
     UserInfoStroke.Parent = UserInfoFrame
-    UserInfoStroke.BackgroundColor3 = TextColor
     UserInfoStroke.BackgroundTransparency = 0.8
     UserInfoStroke.BorderSizePixel = 0
     UserInfoStroke.Size = UDim2.new(0.8, 0, 0, 1)
@@ -837,8 +833,7 @@ function library.new(library, name, theme)
     StatsText.Position = UDim2.new(0, 44, 0, 0)
     StatsText.Size = UDim2.new(1, -44, 1, 0)
     StatsText.Font = Enum.Font.GothamMedium
-    StatsText.Text = "FPS: --\nPing: --\n时间: --:--:--"
-    StatsText.TextColor3 = TextColor
+    StatsText.Text = "FPS: 0\nPing: 0ms\n时间: 00:00:00"
     StatsText.TextSize = 10
     StatsText.TextXAlignment = Enum.TextXAlignment.Left
     StatsText.TextYAlignment = Enum.TextYAlignment.Center
@@ -864,14 +859,14 @@ function library.new(library, name, theme)
             frames = 0
             lastTime = currentTime
             
-            local ping = "--"
+            local ping = "0"
             pcall(function()
                 local pingVal = game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue()
-                ping = math.floor(pingVal) .. "ms"
+                ping = tostring(math.floor(pingVal))
             end)
             
             local timeStr = os.date("%H:%M:%S")
-            StatsText.Text = string.format("FPS: %d\nPing: %s\n时间: %s", fps, ping, timeStr)
+            StatsText.Text = string.format("FPS: %d\nPing: %sms\n时间: %s", fps, ping, timeStr)
         end
     end)
 
@@ -932,23 +927,11 @@ function library.new(library, name, theme)
                     obj.TextSize = obj:GetAttribute("BaseTextSize") + sizeOffset
                 elseif obj.Name ~= "Icon" and obj.Name ~= "Avatar" and obj.Name ~= "Crown" and obj.Name ~= "StatsText" then
                     obj.Font = selectedFont
-                    obj.TextSize = obj:GetAttribute("BaseTextSize") + sizeOffset
-                    
-                    if obj:IsA("TextBox") or obj.Name == "KeybindValue" then
-                        if UI_CONFIG.FontColorMode == "纯净洁白" then
-                            obj.TextColor3 = Color3.fromRGB(30, 30, 30)
-                            if obj:IsA("TextBox") then
-                                obj.PlaceholderColor3 = Color3.fromRGB(100, 100, 100)
-                            end
-                        else
-                            obj.TextColor3 = selectedColor
-                            if obj:IsA("TextBox") then
-                                obj.PlaceholderColor3 = selectedColor
-                            end
-                        end
-                    else
-                        obj.TextColor3 = selectedColor
+                    obj.TextColor3 = selectedColor
+                    if obj:IsA("TextBox") then
+                        obj.PlaceholderColor3 = selectedColor
                     end
+                    obj.TextSize = obj:GetAttribute("BaseTextSize") + sizeOffset
                 elseif obj.Name == "StatsText" then
                     obj.TextColor3 = selectedColor
                     obj.TextSize = obj:GetAttribute("BaseTextSize") + sizeOffset
@@ -1354,11 +1337,12 @@ function library.new(library, name, theme)
                 KeybindValue.Parent = KeybindBtn
                 KeybindValue.AnchorPoint = Vector2.new(1, 0.5)
                 KeybindValue.Position = UDim2.new(1, -8, 0.5, 0)
-                KeybindValue.BackgroundColor3 = Color3.fromRGB(240, 240, 245)
+                KeybindValue.BackgroundColor3 = Background
                 KeybindValue.Size = UDim2.new(0, 60, 0, 22)
                 KeybindValue.AutoButtonColor = false
                 KeybindValue.Font = Enum.Font.GothamSemibold
                 KeybindValue.Text = keyTxt
+                KeybindValue.TextColor3 = TextColor
                 KeybindValue.TextSize = 12.000
                 KeybindValue:SetAttribute("BaseTextSize", 12)
 
@@ -1457,6 +1441,7 @@ function library.new(library, name, theme)
                 TextBox.Size = UDim2.new(1, 0, 1, 0)
                 TextBox.Font = Enum.Font.GothamBold
                 TextBox.Text = default
+                TextBox.TextColor3 = TextColor
                 TextBox.TextSize = 12.000
                 TextBox:SetAttribute("BaseTextSize", 12)
 
@@ -1530,7 +1515,7 @@ function library.new(library, name, theme)
                 SliderValBG.Parent = SliderBack
                 SliderValBG.AnchorPoint = Vector2.new(1, 0.5)
                 SliderValBG.Position = UDim2.new(1, -8, 0.5, 0)
-                SliderValBG.BackgroundColor3 = Color3.fromRGB(240, 240, 245)
+                SliderValBG.BackgroundColor3 = Background
                 SliderValBG.Size = UDim2.new(0, 36, 0, 22)
                 SliderValBG.AutoButtonColor = false
                 SliderValBG.Text = ""
@@ -1544,6 +1529,7 @@ function library.new(library, name, theme)
                 SliderValue.Size = UDim2.new(1, 0, 1, 0)
                 SliderValue.Font = Enum.Font.GothamSemibold
                 SliderValue.Text = tostring(default)
+                SliderValue.TextColor3 = TextColor
                 SliderValue.TextSize = 12.000
                 SliderValue:SetAttribute("BaseTextSize", 12)
 
@@ -1716,6 +1702,7 @@ function library.new(library, name, theme)
                 DropdownText.Font = Enum.Font.GothamBold
                 DropdownText.PlaceholderText = text
                 DropdownText.Text = ""
+                DropdownText.TextColor3 = TextColor
                 DropdownText.TextSize = 13.000
                 DropdownText.TextXAlignment = Enum.TextXAlignment.Left
                 DropdownText:SetAttribute("BaseTextSize", 13)
@@ -1762,6 +1749,7 @@ function library.new(library, name, theme)
                     Option.AutoButtonColor = false
                     Option.Font = Enum.Font.GothamSemibold
                     Option.Text = option
+                    Option.TextColor3 = TextColor
                     Option.TextSize = 12.000
                     Option.Visible = open
                     Option.BackgroundTransparency = interfaceTransparency
