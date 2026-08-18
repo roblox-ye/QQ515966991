@@ -297,7 +297,7 @@ function library.new(library, name, theme)
     zyColor = Color3.fromRGB(255, 255, 255)
     beijingColor = Color3.fromRGB(225, 225, 230)
     TextColor = Color3.fromRGB(30, 30, 30)
-    interfaceTransparency = 0.200
+    interfaceTransparency = 0.750 
     NameTransparency = 0
 
     local dogent = Instance.new("ScreenGui")
@@ -1876,7 +1876,7 @@ function library.new(library, name, theme)
             end
         end)
 
-        sec:Slider("背景不透明度", "CustomBGAlpha", math.floor((1 - (UI_CONFIG.BGTransparency or 0)) * 100), 0, 100, false, function(v)
+        sec:Slider("背景不透明度 (100%最清晰)", "CustomBGAlpha", math.floor((1 - (UI_CONFIG.BGTransparency or 0)) * 100), 0, 100, false, function(v)
             local trans = 1 - (v / 100)
             if CustomBG then CustomBG.ImageTransparency = trans end
             UI_CONFIG.BGTransparency = trans
