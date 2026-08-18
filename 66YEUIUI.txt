@@ -460,7 +460,6 @@ function library.new(library, name, theme)
     CloseBtn.TextSize = 14
     CloseBtn.ZIndex = 10
     CloseBtn:SetAttribute("BaseTextSize", 14)
-    CloseBtn:SetAttribute("KeepDark", true)
     
     local ConfirmOverlay = Instance.new("Frame")
     ConfirmOverlay.Name = "ConfirmOverlay"
@@ -733,11 +732,10 @@ function library.new(library, name, theme)
     ScriptTitle.Size = UDim2.new(1, -16, 0, 18)
     ScriptTitle.Font = Enum.Font.GothamBold
     ScriptTitle.Text = name
-    ScriptTitle.TextColor3 = TextColor
+    ScriptTitle.TextColor3 = Color3.fromRGB(30, 30, 30)
     ScriptTitle.TextSize = 13.000
     ScriptTitle.TextXAlignment = Enum.TextXAlignment.Left
     ScriptTitle:SetAttribute("BaseTextSize", 13)
-    ScriptTitle:SetAttribute("KeepDark", true)
 
     local UIGradientTitle = Instance.new("UIGradient")
     UIGradientTitle.Color = ColorSequence.new{
@@ -889,12 +887,11 @@ function library.new(library, name, theme)
     Open.Size = UDim2.new(0, 50, 0, 50)
     Open.Font = Enum.Font.GothamBold
     Open.Text = "叶脚本"
-    Open.TextColor3 = TextColor
+    Open.TextColor3 = Color3.fromRGB(30, 30, 30)
     Open.TextSize = 14.000
     Open.Active = true
     Open.Draggable = true
     Open:SetAttribute("BaseTextSize", 14)
-    Open:SetAttribute("KeepDark", true)
 
     local OpenCorner = Instance.new("UICorner")
     OpenCorner.CornerRadius = UDim.new(0, 25)
@@ -929,22 +926,28 @@ function library.new(library, name, theme)
                     obj:SetAttribute("BaseTextSize", obj.TextSize)
                 end
                 
-                if obj.Name ~= "Icon" and obj.Name ~= "Crown" then
+                if obj.Name == "Open" or obj.Name == "ScriptTitle" then
+                    obj.TextColor3 = Color3.fromRGB(30, 30, 30)
                     obj.Font = selectedFont
                     obj.TextSize = obj:GetAttribute("BaseTextSize") + sizeOffset
-                end
-                
-                if obj.Name ~= "Icon" and obj.Name ~= "Avatar" and obj.Name ~= "Crown" and obj.Name ~= "StatsText" then
-                    if obj:GetAttribute("KeepDark") then
-                        obj.TextColor3 = Color3.fromRGB(30, 30, 30)
-                        if obj:IsA("TextBox") then
-                            obj.PlaceholderColor3 = Color3.fromRGB(100, 100, 100)
+                elseif obj.Name ~= "Icon" and obj.Name ~= "Avatar" and obj.Name ~= "Crown" and obj.Name ~= "StatsText" then
+                    obj.Font = selectedFont
+                    obj.TextSize = obj:GetAttribute("BaseTextSize") + sizeOffset
+                    
+                    if obj:IsA("TextBox") or obj.Name == "KeybindValue" then
+                        if UI_CONFIG.FontColorMode == "纯净洁白" then
+                            obj.TextColor3 = Color3.fromRGB(30, 30, 30)
+                            if obj:IsA("TextBox") then
+                                obj.PlaceholderColor3 = Color3.fromRGB(100, 100, 100)
+                            end
+                        else
+                            obj.TextColor3 = selectedColor
+                            if obj:IsA("TextBox") then
+                                obj.PlaceholderColor3 = selectedColor
+                            end
                         end
                     else
                         obj.TextColor3 = selectedColor
-                        if obj:IsA("TextBox") then
-                            obj.PlaceholderColor3 = selectedColor
-                        end
                     end
                 elseif obj.Name == "StatsText" then
                     obj.TextColor3 = selectedColor
@@ -1351,15 +1354,13 @@ function library.new(library, name, theme)
                 KeybindValue.Parent = KeybindBtn
                 KeybindValue.AnchorPoint = Vector2.new(1, 0.5)
                 KeybindValue.Position = UDim2.new(1, -8, 0.5, 0)
-                KeybindValue.BackgroundColor3 = Background
+                KeybindValue.BackgroundColor3 = Color3.fromRGB(240, 240, 245)
                 KeybindValue.Size = UDim2.new(0, 60, 0, 22)
                 KeybindValue.AutoButtonColor = false
                 KeybindValue.Font = Enum.Font.GothamSemibold
                 KeybindValue.Text = keyTxt
-                KeybindValue.TextColor3 = TextColor
                 KeybindValue.TextSize = 12.000
                 KeybindValue:SetAttribute("BaseTextSize", 12)
-                KeybindValue:SetAttribute("KeepDark", true)
 
                 KeybindValueC.CornerRadius = UDim.new(0, 6)
                 KeybindValueC.Parent = KeybindValue
@@ -1456,10 +1457,8 @@ function library.new(library, name, theme)
                 TextBox.Size = UDim2.new(1, 0, 1, 0)
                 TextBox.Font = Enum.Font.GothamBold
                 TextBox.Text = default
-                TextBox.TextColor3 = TextColor
                 TextBox.TextSize = 12.000
                 TextBox:SetAttribute("BaseTextSize", 12)
-                TextBox:SetAttribute("KeepDark", true)
 
                 TextBox.Focused:Connect(function()
                     TS:Create(BoxStroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(0, 122, 255), Transparency = 0}):Play()
@@ -1531,7 +1530,7 @@ function library.new(library, name, theme)
                 SliderValBG.Parent = SliderBack
                 SliderValBG.AnchorPoint = Vector2.new(1, 0.5)
                 SliderValBG.Position = UDim2.new(1, -8, 0.5, 0)
-                SliderValBG.BackgroundColor3 = Background
+                SliderValBG.BackgroundColor3 = Color3.fromRGB(240, 240, 245)
                 SliderValBG.Size = UDim2.new(0, 36, 0, 22)
                 SliderValBG.AutoButtonColor = false
                 SliderValBG.Text = ""
@@ -1545,10 +1544,8 @@ function library.new(library, name, theme)
                 SliderValue.Size = UDim2.new(1, 0, 1, 0)
                 SliderValue.Font = Enum.Font.GothamSemibold
                 SliderValue.Text = tostring(default)
-                SliderValue.TextColor3 = TextColor
                 SliderValue.TextSize = 12.000
                 SliderValue:SetAttribute("BaseTextSize", 12)
-                SliderValue:SetAttribute("KeepDark", true)
 
                 AddSlider.Parent = SliderBack
                 AddSlider.AnchorPoint = Vector2.new(1, 0.5)
@@ -1717,14 +1714,11 @@ function library.new(library, name, theme)
                 DropdownText.Position = UDim2.new(0, 12, 0, 0)
                 DropdownText.Size = UDim2.new(1, -40, 1, 0)
                 DropdownText.Font = Enum.Font.GothamBold
-                DropdownText.PlaceholderColor3 = TextColor
                 DropdownText.PlaceholderText = text
                 DropdownText.Text = ""
-                DropdownText.TextColor3 = TextColor
                 DropdownText.TextSize = 13.000
                 DropdownText.TextXAlignment = Enum.TextXAlignment.Left
                 DropdownText:SetAttribute("BaseTextSize", 13)
-                DropdownText:SetAttribute("KeepDark", true)
 
                 DropdownModuleL.Parent = DropdownModule
                 DropdownModuleL.SortOrder = Enum.SortOrder.LayoutOrder
@@ -1768,13 +1762,11 @@ function library.new(library, name, theme)
                     Option.AutoButtonColor = false
                     Option.Font = Enum.Font.GothamSemibold
                     Option.Text = option
-                    Option.TextColor3 = TextColor
                     Option.TextSize = 12.000
                     Option.Visible = open
                     Option.BackgroundTransparency = interfaceTransparency
                     Option:SetAttribute("BaseTextSize", 12)
                     Option:SetAttribute("IsControlBG", true)
-                    Option:SetAttribute("KeepDark", true)
 
                     OptionC.CornerRadius = UDim.new(0, 6)
                     OptionC.Parent = Option
