@@ -28,7 +28,7 @@ local mouse = services.Players.LocalPlayer:GetMouse()
 local IsPC = UserInputService.KeyboardEnabled and not UserInputService.TouchEnabled
 local DefaultScale = IsPC and 1.3 or 0.91
 
-local ConfigPath = "Ye_UI_Settings_V3_1.json"
+local ConfigPath = "UI_Settings_V3_1.json"
 
 local Palettes = {
     ["默认静态 (Static)"] = ColorSequence.new({
@@ -125,7 +125,7 @@ local UI_CONFIG = {
     Palette = "赛博朋克 (Cyberpunk)",
     MarqueeSpeed = 1,
     BGImage = "",
-    BGTransparency = 0.85,
+    BGTransparency = 0,
     GlowEnabled = false,
     GlowColor = "赛博青蓝",
     GlowIntensity = 50,
@@ -351,7 +351,7 @@ function library.new(library, name, theme)
     BasePlateCorner.Parent = BasePlate
 
     local CustomBG = Instance.new("ImageLabel")
-    CustomBG.Name = "YeCustomBackground"
+    CustomBG.Name = "CustomBackground"
     CustomBG.Parent = CloudMain
     CustomBG.Size = UDim2.new(1, 0, 1, 0)
     CustomBG.BackgroundTransparency = 1
@@ -367,7 +367,7 @@ function library.new(library, name, theme)
     local RefreshGlobalUI
 
     local function GetLocalRandomBG(url, index)
-        local folderName = "YE_UI_Assets"
+        local folderName = "UI_Assets"
         local fileName = folderName .. "/bg_" .. tostring(index) .. ".jpg"
         if not isfolder(folderName) then makefolder(folderName) end
         if not isfile(fileName) then
@@ -416,7 +416,7 @@ function library.new(library, name, theme)
     end)
 
     local uiScale = Instance.new("UIScale")
-    uiScale.Name = "YeUIScale"
+    uiScale.Name = "UIScale_UI"
     uiScale.Parent = CloudMain
     uiScale.Scale = UI_CONFIG.Scale
     
@@ -425,9 +425,13 @@ function library.new(library, name, theme)
             UI_CONFIG.Scale = DefaultScale
             uiScale.Scale = DefaultScale
             SaveConfig()
-            if getgenv().Ye_Notify then
-                getgenv().Ye_Notify("UI 救援", "界面缩放已重置为默认大小！", 3)
-            end
+            pcall(function()
+                game:GetService("StarterGui"):SetCore("SendNotification", {
+                    Title = "UI 救援",
+                    Text = "界面缩放已重置为默认大小！",
+                    Duration = 3
+                })
+            end)
         end
     end)
 
@@ -449,7 +453,7 @@ function library.new(library, name, theme)
     CloseBtn:SetAttribute("BaseTextSize", 14)
     
     local ConfirmOverlay = Instance.new("Frame")
-    ConfirmOverlay.Name = "YeConfirmOverlay"
+    ConfirmOverlay.Name = "ConfirmOverlay"
     ConfirmOverlay.Parent = CloudMain
     ConfirmOverlay.Size = UDim2.new(1, 0, 1, 0)
     ConfirmOverlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
@@ -463,7 +467,7 @@ function library.new(library, name, theme)
     ConfirmOverlayCorner.Parent = ConfirmOverlay
 
     local ConfirmMain = Instance.new("Frame")
-    ConfirmMain.Name = "YeConfirmMain"
+    ConfirmMain.Name = "ConfirmMain"
     ConfirmMain.Parent = ConfirmOverlay
     ConfirmMain.AnchorPoint = Vector2.new(0.5, 0.5)
     ConfirmMain.Position = UDim2.new(0.5, 0, 0.5, 0)
@@ -805,7 +809,7 @@ function library.new(library, name, theme)
 
     task.spawn(function()
         for i = 1, 30 do
-            if getgenv().IsYeVIP and getgenv().IsYeVIP(LocalPlayer) then
+            if getgenv().IsVIP and getgenv().IsVIP(LocalPlayer) then
                 AvatarStroke.Transparency = 0
                 CrownIcon.Visible = true
                 break
@@ -870,7 +874,7 @@ function library.new(library, name, theme)
     Open.Position = UDim2.new(0.01, 0, 0.3, 0)
     Open.Size = UDim2.new(0, 50, 0, 50)
     Open.Font = Enum.Font.GothamBold
-    Open.Text = "YE"
+    Open.Text = "菜单"
     Open.TextColor3 = TextColor
     Open.TextSize = 14.000
     Open.Active = true
@@ -910,15 +914,23 @@ function library.new(library, name, theme)
                     obj:SetAttribute("BaseTextSize", obj.TextSize)
                 end
                 
-                if obj:IsA("TextBox") then
-                    obj.PlaceholderColor3 = selectedColor
-                end
-                
-                if obj.Name == "Open" or obj.Name == "ScriptTitle" then
+                if obj.Name == "InputBox" or obj.Name == "SliderValueBox" or obj.Name == "KeybindValue" then
                     obj.TextColor3 = Color3.fromRGB(30, 30, 30)
+                    if obj:IsA("TextBox") then
+                        obj.PlaceholderColor3 = Color3.fromRGB(100, 100, 100)
+                    end
+                    obj.Font = selectedFont
+                    obj.TextSize = obj:GetAttribute("BaseTextSize") + sizeOffset
+                elseif obj.Name == "Open" or obj.Name == "ScriptTitle" then
+                    obj.TextColor3 = Color3.fromRGB(30, 30, 30)
+                    obj.Font = selectedFont
+                    obj.TextSize = obj:GetAttribute("BaseTextSize") + sizeOffset
                 elseif obj.Name ~= "Icon" and obj.Name ~= "Avatar" and obj.Name ~= "Crown" and obj.Name ~= "StatsText" then
                     obj.Font = selectedFont
                     obj.TextColor3 = selectedColor
+                    if obj:IsA("TextBox") then
+                        obj.PlaceholderColor3 = selectedColor
+                    end
                     obj.TextSize = obj:GetAttribute("BaseTextSize") + sizeOffset
                 elseif obj.Name == "StatsText" then
                     obj.TextColor3 = selectedColor
@@ -1423,6 +1435,7 @@ function library.new(library, name, theme)
                 BoxStroke.Thickness = 1
                 BoxStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 
+                TextBox.Name = "InputBox"
                 TextBox.Parent = BoxBG
                 TextBox.BackgroundTransparency = 1.000
                 TextBox.Size = UDim2.new(1, 0, 1, 0)
@@ -1510,6 +1523,7 @@ function library.new(library, name, theme)
                 SliderValBGC.CornerRadius = UDim.new(0, 6)
                 SliderValBGC.Parent = SliderValBG
 
+                SliderValue.Name = "SliderValueBox"
                 SliderValue.Parent = SliderValBG
                 SliderValue.BackgroundTransparency = 1.000
                 SliderValue.Size = UDim2.new(1, 0, 1, 0)
@@ -1680,6 +1694,7 @@ function library.new(library, name, theme)
                 DropdownOpen.TextSize = 20.000
                 DropdownOpen:SetAttribute("BaseTextSize", 20)
 
+                DropdownText.Name = "DropdownText"
                 DropdownText.Parent = DropdownTop
                 DropdownText.BackgroundTransparency = 1.000
                 DropdownText.Position = UDim2.new(0, 12, 0, 0)
@@ -1772,7 +1787,7 @@ function library.new(library, name, theme)
     end
 
     local ResizeHandle = Instance.new("TextButton")
-    ResizeHandle.Name = "YeResizeHandle"
+    ResizeHandle.Name = "ResizeHandle"
     ResizeHandle.Parent = CloudMain
     ResizeHandle.AnchorPoint = Vector2.new(1, 1)
     ResizeHandle.Position = UDim2.new(1, -2, 1, -2)
@@ -1924,9 +1939,13 @@ function library.new(library, name, theme)
         sec:Button("保存当前配置", function()
             ShowConfirm("确认保存并使用当前配置吗？", function()
                 SaveConfig()
-                if getgenv().Ye_Notify then
-                    getgenv().Ye_Notify("UI 设置", "配置已成功保存！", 4)
-                end
+                pcall(function()
+                    game:GetService("StarterGui"):SetCore("SendNotification", {
+                        Title = "UI 设置",
+                        Text = "配置已成功保存！",
+                        Duration = 4
+                    })
+                end)
             end)
         end)
 
@@ -1964,9 +1983,13 @@ function library.new(library, name, theme)
                     SaveConfig() 
                 end
 
-                if getgenv().Ye_Notify then
-                    getgenv().Ye_Notify("UI 设置", "已清除配置文件，界面已恢复默认", 4)
-                end
+                pcall(function()
+                    game:GetService("StarterGui"):SetCore("SendNotification", {
+                        Title = "UI 设置",
+                        Text = "已清除配置文件，界面已恢复默认",
+                        Duration = 4
+                    })
+                end)
             end)
         end)
     end
@@ -1987,5 +2010,5 @@ function library.new(library, name, theme)
     return window
 end
 
-_G.YeScript_UI_V15 = library
+_G.Script_UI_V15 = library
 return library
