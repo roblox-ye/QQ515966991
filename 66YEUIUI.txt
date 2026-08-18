@@ -125,7 +125,7 @@ local UI_CONFIG = {
     Palette = "赛博朋克 (Cyberpunk)",
     MarqueeSpeed = 1,
     BGImage = "",
-    BGTransparency = 0.85,
+    BGTransparency = 0,
     GlowEnabled = false,
     GlowColor = "赛博青蓝",
     GlowIntensity = 50,
@@ -156,11 +156,11 @@ if UI_CONFIG.UseRandomBG then
     if SelectedBGIndex == 1 then
         UI_CONFIG.Palette = "冰蓝极光 (Aurora)"
         UI_CONFIG.FontColorMode = "默认深色"
-        UI_CONFIG.BGTransparency = 0.4
+        UI_CONFIG.BGTransparency = 0
     else
         UI_CONFIG.Palette = "熔岩烈火 (Magma)"
         UI_CONFIG.FontColorMode = "纯净洁白"
-        UI_CONFIG.BGTransparency = 0.2
+        UI_CONFIG.BGTransparency = 0
     end
 end
 
@@ -372,7 +372,7 @@ function library.new(library, name, theme)
             else
                 CustomBG.Image = ""
             end
-            CustomBG.ImageTransparency = UI_CONFIG.BGTransparency or 0.85
+            CustomBG.ImageTransparency = UI_CONFIG.BGTransparency or 0
         end
     end
 
@@ -1815,16 +1815,16 @@ function library.new(library, name, theme)
                 if SelectedBGIndex == 1 then
                     UI_CONFIG.Palette = "冰蓝极光 (Aurora)"
                     UI_CONFIG.FontColorMode = "默认深色"
-                    UI_CONFIG.BGTransparency = 0.4
+                    UI_CONFIG.BGTransparency = 0
                 else
                     UI_CONFIG.Palette = "熔岩烈火 (Magma)"
                     UI_CONFIG.FontColorMode = "纯净洁白"
-                    UI_CONFIG.BGTransparency = 0.2
+                    UI_CONFIG.BGTransparency = 0
                 end
             else
                 UI_CONFIG.Palette = "赛博朋克 (Cyberpunk)"
                 UI_CONFIG.FontColorMode = "默认深色"
-                UI_CONFIG.BGTransparency = 0.85
+                UI_CONFIG.BGTransparency = 0
             end
             MainStrokeGradient.Color = Palettes[UI_CONFIG.Palette]
             RefreshGlobalUI()
@@ -1876,7 +1876,7 @@ function library.new(library, name, theme)
             end
         end)
 
-        sec:Slider("背景不透明度", "CustomBGAlpha", math.floor((1 - (UI_CONFIG.BGTransparency or 0.85)) * 100), 0, 100, false, function(v)
+        sec:Slider("背景不透明度", "CustomBGAlpha", math.floor((1 - (UI_CONFIG.BGTransparency or 0)) * 100), 0, 100, false, function(v)
             local trans = 1 - (v / 100)
             if CustomBG then CustomBG.ImageTransparency = trans end
             UI_CONFIG.BGTransparency = trans
@@ -1898,7 +1898,7 @@ function library.new(library, name, theme)
                 UI_CONFIG.Palette = "赛博朋克 (Cyberpunk)"
                 UI_CONFIG.MarqueeSpeed = 1
                 UI_CONFIG.BGImage = ""
-                UI_CONFIG.BGTransparency = 0.85
+                UI_CONFIG.BGTransparency = 0
                 UI_CONFIG.GlowEnabled = false
                 UI_CONFIG.GlowColor = "赛博青蓝"
                 UI_CONFIG.GlowIntensity = 50
