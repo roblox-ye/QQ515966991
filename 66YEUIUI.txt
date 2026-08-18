@@ -130,7 +130,7 @@ local UI_CONFIG = {
     GlowColor = "赛博青蓝",
     GlowIntensity = 50,
     FontMode = "Gotham Bold (加粗)",
-    FontColorMode = "默认深色",
+    FontColorMode = "纯净洁白",
     FontSizeOffset = 0,
     UseRandomBG = true
 }
@@ -910,6 +910,17 @@ function library.new(library, name, theme)
         local selectedFont = FontTypes[UI_CONFIG.FontMode] or Enum.Font.GothamBold
         local selectedColor = FontColorPresets[UI_CONFIG.FontColorMode] or Color3.fromRGB(255, 255, 255)
         local sizeOffset = UI_CONFIG.FontSizeOffset or 0
+        
+        local cR = selectedColor.R
+        local cG = selectedColor.G
+        local cB = selectedColor.B
+        local brightness = (cR * 299 + cG * 587 + cB * 114) / 1000
+        
+        local strokeColor = Color3.fromRGB(255, 255, 255)
+        if brightness > 0.5 then
+            strokeColor = Color3.fromRGB(0, 0, 0)
+        end
+        local strokeAlpha = 0.35
 
         for _, obj in ipairs(dogent:GetDescendants()) do
             if obj:GetAttribute("IsControlBG") then
@@ -925,6 +936,8 @@ function library.new(library, name, theme)
                     obj.TextColor3 = Color3.fromRGB(30, 30, 30)
                     obj.Font = selectedFont
                     obj.TextSize = obj:GetAttribute("BaseTextSize") + sizeOffset
+                    obj.TextStrokeTransparency = 0.6
+                    obj.TextStrokeColor3 = Color3.fromRGB(255, 255, 255)
                 elseif obj.Name ~= "Icon" and obj.Name ~= "Avatar" and obj.Name ~= "Crown" and obj.Name ~= "StatsText" then
                     obj.Font = selectedFont
                     obj.TextColor3 = selectedColor
@@ -932,9 +945,13 @@ function library.new(library, name, theme)
                         obj.PlaceholderColor3 = selectedColor
                     end
                     obj.TextSize = obj:GetAttribute("BaseTextSize") + sizeOffset
+                    obj.TextStrokeTransparency = strokeAlpha
+                    obj.TextStrokeColor3 = strokeColor
                 elseif obj.Name == "StatsText" then
                     obj.TextColor3 = selectedColor
                     obj.TextSize = obj:GetAttribute("BaseTextSize") + sizeOffset
+                    obj.TextStrokeTransparency = strokeAlpha
+                    obj.TextStrokeColor3 = strokeColor
                 end
                 
                 if obj.Name == "TopLine" then
@@ -1960,7 +1977,7 @@ function library.new(library, name, theme)
                 UI_CONFIG.GlowColor = "赛博青蓝"
                 UI_CONFIG.GlowIntensity = 50
                 UI_CONFIG.FontMode = "Gotham Bold (加粗)"
-                UI_CONFIG.FontColorMode = "默认深色"
+                UI_CONFIG.FontColorMode = "纯净洁白"
                 UI_CONFIG.FontSizeOffset = 0
                 UI_CONFIG.UseRandomBG = true
                 
