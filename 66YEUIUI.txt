@@ -289,6 +289,7 @@ function library.new(library, name, theme)
     NameTransparency = 0
 
     local dogent = Instance.new("ScreenGui")
+    dogent.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     local CloudMain = Instance.new("Frame")
     local TabMain = Instance.new("Frame")
     local MainC = Instance.new("UICorner")
@@ -330,7 +331,6 @@ function library.new(library, name, theme)
     CustomBG.Parent = CloudMain
     CustomBG.Size = UDim2.new(1, 0, 1, 0)
     CustomBG.BackgroundTransparency = 1
-    CustomBG.ZIndex = 0 
     CustomBG.ScaleType = Enum.ScaleType.Crop 
     
     local CustomBGCorner = Instance.new("UICorner")
@@ -349,17 +349,29 @@ function library.new(library, name, theme)
     end
 
     local function UpdateBackgroundDisplay()
+        if not CustomBG then return end
+        local hasImage = false
         if UI_CONFIG.UseRandomBG then
             local assetId = GetLocalRandomBG(SelectedBGURL, SelectedBGIndex)
-            if assetId ~= "" then CustomBG.Image = assetId end
+            if assetId ~= "" then 
+                CustomBG.Image = assetId 
+                hasImage = true
+            end
             CustomBG.ImageTransparency = UI_CONFIG.BGTransparency or 0
         else
             if UI_CONFIG.BGImage and UI_CONFIG.BGImage ~= "" and UI_CONFIG.BGImage ~= "0" then
                 CustomBG.Image = string.match(UI_CONFIG.BGImage, "^%d+$") and "rbxassetid://" .. UI_CONFIG.BGImage or UI_CONFIG.BGImage
+                hasImage = true
             else
                 CustomBG.Image = ""
             end
             CustomBG.ImageTransparency = UI_CONFIG.BGTransparency or 0
+        end
+        
+        if hasImage then
+            CloudMain.BackgroundTransparency = 1
+        else
+            CloudMain.BackgroundTransparency = 0.1
         end
     end
 
@@ -822,7 +834,7 @@ function library.new(library, name, theme)
     Open.Position = UDim2.new(0.01, 0, 0.3, 0)
     Open.Size = UDim2.new(0, 50, 0, 50)
     Open.Font = Enum.Font.GothamBold
-    Open.Text = "YE"
+    Open.Text = "叶脚本"
     Open.TextColor3 = TextColor
     Open.TextSize = 14.000
     Open.Active = true
@@ -1846,7 +1858,7 @@ function library.new(library, name, theme)
             end
         end)
 
-        sec:Slider("背景不透明度", "CustomBGAlpha", math.floor((1 - (UI_CONFIG.BGTransparency or 0)) * 100), 0, 100, false, function(v)
+        sec:Slider("背景不透明度 (100%最清晰)", "CustomBGAlpha", math.floor((1 - (UI_CONFIG.BGTransparency or 0)) * 100), 0, 100, false, function(v)
             local trans = 1 - (v / 100)
             local bgTarget = CloudMain:FindFirstChild("YeCustomBackground")
             if bgTarget then bgTarget.ImageTransparency = trans end
@@ -1910,7 +1922,8 @@ function library.new(library, name, theme)
     CloudMain.BackgroundTransparency = 1
     CloudMain.Visible = true
     TS:Create(uiScale, TweenInfo.new(0.7, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = UI_CONFIG.Scale}):Play()
-    TS:Create(CloudMain, TweenInfo.new(0.3), {BackgroundTransparency = 0.1}):Play()
+    local targetTrans = (CustomBG.Image ~= "") and 1 or 0.1
+    TS:Create(CloudMain, TweenInfo.new(0.3), {BackgroundTransparency = targetTrans}):Play()
 
     return window
 end
