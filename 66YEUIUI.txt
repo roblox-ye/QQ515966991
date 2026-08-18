@@ -285,6 +285,8 @@ function library.new(library, name, theme)
     zyColor = Color3.fromRGB(255, 255, 255)
     beijingColor = Color3.fromRGB(225, 225, 230)
     TextColor = Color3.fromRGB(30, 30, 30)
+    
+    -- 默认控件透明度设定
     interfaceTransparency = 0.200
     NameTransparency = 0
 
@@ -320,7 +322,8 @@ function library.new(library, name, theme)
     CloudMain.BorderColor3 = MainColor
     CloudMain.Position = UDim2.new(0.5, 0, 0.4, 0)
     CloudMain.Size = UDim2.new(0, 482, 0, 369)
-    CloudMain.BackgroundTransparency = 0.1
+    -- 取消默认的0.1透明度，回归实心状态
+    CloudMain.BackgroundTransparency = 0
     CloudMain.Visible = true 
     CloudMain.Active = true
     CloudMain.Draggable = true   
@@ -336,6 +339,9 @@ function library.new(library, name, theme)
     local CustomBGCorner = Instance.new("UICorner")
     CustomBGCorner.CornerRadius = UDim.new(0, 14)
     CustomBGCorner.Parent = CustomBG
+
+    -- 前置声明全局刷新函数，以便 UpdateBackgroundDisplay 中调用
+    local RefreshGlobalUI
 
     local function GetLocalRandomBG(url, index)
         local folderName = "YE_UI_Assets"
@@ -368,11 +374,21 @@ function library.new(library, name, theme)
             CustomBG.ImageTransparency = UI_CONFIG.BGTransparency or 0
         end
         
+        -- 根据是否有背景图，动态分配界面透明度
         if hasImage then
             CloudMain.BackgroundTransparency = 1
+            interfaceTransparency = 0.8 -- 背景透明度0.8，即20%的不透明度（完美透出背景图）
+            if SB then SB.BackgroundTransparency = 0.8 end
+            if Side then Side.BackgroundTransparency = 0.8 end
         else
-            CloudMain.BackgroundTransparency = 0.1
+            CloudMain.BackgroundTransparency = 0 -- 不开背景图时，底板完全实心不加戏
+            interfaceTransparency = 0.2 -- 默认80%的不透明度
+            if SB then SB.BackgroundTransparency = 0.7 end
+            if Side then Side.BackgroundTransparency = 0.7 end
         end
+        
+        -- 调用全局UI刷新以应用所有的控件透明度更改
+        if RefreshGlobalUI then RefreshGlobalUI() end
     end
 
     task.spawn(function()
@@ -655,7 +671,7 @@ function library.new(library, name, theme)
     SB.BackgroundColor3 = TextColor
     SB.BorderColor3 = MainColor
     SB.Size = UDim2.new(0, 8, 1, 0)
-    SB.Transparency = 0.700
+    SB.BackgroundTransparency = 0.700
 
     SBC.CornerRadius = UDim.new(0, 14)
     SBC.Parent = SB
@@ -667,7 +683,7 @@ function library.new(library, name, theme)
     Side.ClipsDescendants = true
     Side.Position = UDim2.new(1, 0, 0, 0)
     Side.Size = UDim2.new(0, 110, 1, 0)
-    Side.Transparency = 0.700
+    Side.BackgroundTransparency = 0.700
 
     SideG.Color = ColorSequence.new {ColorSequenceKeypoint.new(0.00, zyColor), ColorSequenceKeypoint.new(1.00, zyColor)}
     SideG.Rotation = 90
@@ -859,12 +875,17 @@ function library.new(library, name, theme)
 
     Open.MouseButton1Click:Connect(function() toggleui() end)
 
-    local function RefreshGlobalUI()
+    RefreshGlobalUI = function()
         local selectedFont = FontTypes[UI_CONFIG.FontMode] or Enum.Font.GothamBold
         local selectedColor = FontColorPresets[UI_CONFIG.FontColorMode] or Color3.fromRGB(255, 255, 255)
         local sizeOffset = UI_CONFIG.FontSizeOffset or 0
 
         for _, obj in ipairs(dogent:GetDescendants()) do
+            -- 动态调整挂载了 IsControlBG 的控件背景透明度，防盖住背景图
+            if obj:GetAttribute("IsControlBG") then
+                obj.BackgroundTransparency = interfaceTransparency
+            end
+            
             if obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
                 if not obj:GetAttribute("BaseTextSize") then
                     obj:SetAttribute("BaseTextSize", obj.TextSize)
@@ -1099,9 +1120,10 @@ function library.new(library, name, theme)
                 Btn.TextColor3 = TextColor
                 Btn.TextSize = 13.000
                 Btn.TextXAlignment = Enum.TextXAlignment.Left
-                Btn.Transparency = interfaceTransparency
+                Btn.BackgroundTransparency = interfaceTransparency
                 Btn.TextTransparency = NameTransparency
                 Btn:SetAttribute("BaseTextSize", 13)
+                Btn:SetAttribute("IsControlBG", true)
 
                 BtnC.CornerRadius = UDim.new(0, 6)
                 BtnC.Parent = Btn
@@ -1131,7 +1153,7 @@ function library.new(library, name, theme)
                 LabelModule.Size = UDim2.new(1, -4, 0, 20)
                 
                 TextLabel.Parent = LabelModule
-                TextLabel.Transparency = interfaceTransparency
+                TextLabel.BackgroundTransparency = interfaceTransparency
                 TextLabel.BackgroundColor3 = zyColor
                 TextLabel.Size = UDim2.new(1, 0, 1, 0)
                 TextLabel.Font = Enum.Font.GothamBold
@@ -1140,6 +1162,7 @@ function library.new(library, name, theme)
                 TextLabel.TextSize = 12.000
                 TextLabel.TextTransparency = NameTransparency
                 TextLabel:SetAttribute("BaseTextSize", 12)
+                TextLabel:SetAttribute("IsControlBG", true)
 
                 LabelC.CornerRadius = UDim.new(0, 6)
                 LabelC.Parent = TextLabel
@@ -1176,8 +1199,9 @@ function library.new(library, name, theme)
                 ToggleBtn.TextColor3 = TextColor
                 ToggleBtn.TextSize = 13.000
                 ToggleBtn.TextXAlignment = Enum.TextXAlignment.Left
-                ToggleBtn.Transparency = interfaceTransparency
+                ToggleBtn.BackgroundTransparency = interfaceTransparency
                 ToggleBtn:SetAttribute("BaseTextSize", 13)
+                ToggleBtn:SetAttribute("IsControlBG", true)
 
                 ToggleBtnC.CornerRadius = UDim.new(0, 6)
                 ToggleBtnC.Parent = ToggleBtn
@@ -1258,8 +1282,9 @@ function library.new(library, name, theme)
                 KeybindBtn.TextColor3 = TextColor
                 KeybindBtn.TextSize = 13.000
                 KeybindBtn.TextXAlignment = Enum.TextXAlignment.Left
-                KeybindBtn.Transparency = interfaceTransparency
+                KeybindBtn.BackgroundTransparency = interfaceTransparency
                 KeybindBtn:SetAttribute("BaseTextSize", 13)
+                KeybindBtn:SetAttribute("IsControlBG", true)
 
                 KeybindBtnC.CornerRadius = UDim.new(0, 6)
                 KeybindBtnC.Parent = KeybindBtn
@@ -1340,8 +1365,9 @@ function library.new(library, name, theme)
                 TextboxBack.TextColor3 = TextColor
                 TextboxBack.TextSize = 13.000
                 TextboxBack.TextXAlignment = Enum.TextXAlignment.Left
-                TextboxBack.Transparency = interfaceTransparency
+                TextboxBack.BackgroundTransparency = interfaceTransparency
                 TextboxBack:SetAttribute("BaseTextSize", 13)
+                TextboxBack:SetAttribute("IsControlBG", true)
 
                 TextboxBackC.CornerRadius = UDim.new(0, 6)
                 TextboxBackC.Parent = TextboxBack
@@ -1433,8 +1459,9 @@ function library.new(library, name, theme)
                 SliderBack.TextColor3 = TextColor
                 SliderBack.TextSize = 13.000
                 SliderBack.TextXAlignment = Enum.TextXAlignment.Left
-                SliderBack.Transparency = interfaceTransparency
+                SliderBack.BackgroundTransparency = interfaceTransparency
                 SliderBack:SetAttribute("BaseTextSize", 13)
+                SliderBack:SetAttribute("IsControlBG", true)
 
                 SliderBackC.CornerRadius = UDim.new(0, 6)
                 SliderBackC.Parent = SliderBack
@@ -1604,7 +1631,8 @@ function library.new(library, name, theme)
                 DropdownTop.Size = UDim2.new(1, 0, 0, 30)
                 DropdownTop.AutoButtonColor = false
                 DropdownTop.Text = ""
-                DropdownTop.Transparency = interfaceTransparency
+                DropdownTop.BackgroundTransparency = interfaceTransparency
+                DropdownTop:SetAttribute("IsControlBG", true)
 
                 DropdownTopC.CornerRadius = UDim.new(0, 6)
                 DropdownTopC.Parent = DropdownTop
@@ -1685,7 +1713,9 @@ function library.new(library, name, theme)
                     Option.TextColor3 = TextColor
                     Option.TextSize = 12.000
                     Option.Visible = open
+                    Option.BackgroundTransparency = interfaceTransparency
                     Option:SetAttribute("BaseTextSize", 12)
+                    Option:SetAttribute("IsControlBG", true)
 
                     OptionC.CornerRadius = UDim.new(0, 6)
                     OptionC.Parent = Option
@@ -1858,7 +1888,7 @@ function library.new(library, name, theme)
             end
         end)
 
-        sec:Slider("背景不透明度 (100%最清晰)", "CustomBGAlpha", math.floor((1 - (UI_CONFIG.BGTransparency or 0)) * 100), 0, 100, false, function(v)
+        sec:Slider("背景不透明度", "CustomBGAlpha", math.floor((1 - (UI_CONFIG.BGTransparency or 0)) * 100), 0, 100, false, function(v)
             local trans = 1 - (v / 100)
             local bgTarget = CloudMain:FindFirstChild("YeCustomBackground")
             if bgTarget then bgTarget.ImageTransparency = trans end
