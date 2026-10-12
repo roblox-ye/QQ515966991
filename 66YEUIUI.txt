@@ -135,6 +135,8 @@ local UI_CONFIG = {
     UseRandomBG = true
 }
 
+local UI_DEFAULTS = table.clone(UI_CONFIG)
+
 if isfile and isfile(ConfigPath) then
     pcall(function()
         local data = HttpService:JSONDecode(readfile(ConfigPath))
@@ -144,146 +146,544 @@ if isfile and isfile(ConfigPath) then
     end)
 end
 
-if UI_CONFIG.BGTransparency == 0.85 then
-    UI_CONFIG.BGTransparency = 0
-end
+-- Saved transparency is an explicit user setting; no implicit migration.
 
 local RandomURLs = {
     "https://raw.githubusercontent.com/roblox-ye/QQ515966991/refs/heads/main/.2.jpg",
     "https://raw.githubusercontent.com/roblox-ye/QQ515966991/refs/heads/main/temp_1787024048668_1787024048754.jpg",
     "https://raw.githubusercontent.com/roblox-ye/QQ515966991/refs/heads/main/0e6f4b13a9002e89051964d8f04f2d8e.jpg"
 }
-math.randomseed(tick() % 1 * 1000000)
+-- Do not reseed the gameplay script's shared random stream.
 local SelectedBGIndex = math.random(1, 3)
 local SelectedBGURL = RandomURLs[SelectedBGIndex]
 
+local savedConfig = table.clone(UI_CONFIG)
+local function setting(key)
+    local value, fallback = UI_CONFIG[key], UI_DEFAULTS[key]
+    if fallback ~= nil and type(value) ~= type(fallback) then return fallback end
+    if type(value) == "number" and (value ~= value or math.abs(value) == math.huge) then return fallback end
+    return value
+end
+if type(UI_CONFIG.Scale) ~= "number" or UI_CONFIG.Scale ~= UI_CONFIG.Scale or UI_CONFIG.Scale <= 0 or math.abs(UI_CONFIG.Scale) == math.huge then
+    UI_CONFIG.Scale = DefaultScale
+end
 local function SaveConfig()
-    if writefile then
-        pcall(function()
-            writefile(ConfigPath, HttpService:JSONEncode(UI_CONFIG))
-        end)
-    end
+    if not writefile then return false, "执行器不支持配置保存" end
+    local success, result = pcall(function() writefile(ConfigPath, HttpService:JSONEncode(UI_CONFIG)) end)
+    if success then savedConfig = table.clone(UI_CONFIG) end
+    return success, result
+end
+local function SaveLayout()
+    if not writefile then return false end
+    local data = table.clone(savedConfig)
+    for _, key in ipairs({"WindowWidth", "WindowHeight", "WindowOffsetX", "WindowOffsetY"}) do data[key] = UI_CONFIG[key] end
+    local success = pcall(function() writefile(ConfigPath, HttpService:JSONEncode(data)) end)
+    if success then savedConfig = data end
+    return success
 end
 
+-- YE_UI_MODERN_CORE_BEGIN
+-- Native tweens do the interpolation; this owner only coordinates replacement and cleanup.
+local UIManagers = {}
+local latestUI
+local function finite(value)
+    return type(value) == "number" and value == value and math.abs(value) < math.huge
+end
+local function assign(obj, key, value)
+    if obj[key] ~= value then obj[key] = value; return true end
+    return false
+end
+local function managerFor(obj)
+    while obj do
+        if UIManagers[obj] then return UIManagers[obj] end
+        obj = obj.Parent
+    end
+end
+local Motion = {}
+Motion.__index = Motion
+function Motion:Connect(owner, signal, callback)
+    local connection
+    connection = signal:Connect(function(...)
+        if self.Alive and (owner == self.Root or owner.Parent) then callback(...) end
+    end)
+    self.Connections[connection] = owner
+    return connection
+end
+function Motion:Disconnect(connection)
+    if connection then self.Connections[connection] = nil; connection:Disconnect() end
+end
+function Motion:Spawn(owner, callback, delay)
+    if not self.Alive then return end
+    local entry = {Owner = owner}
+    self.Tasks[entry] = true
+    local function run()
+        local success, err = pcall(function()
+            if self.Alive and (owner == self.Root or owner.Parent) then callback() end
+        end)
+        self.Tasks[entry] = nil
+        if not success then error(err, 0) end
+    end
+    entry.Thread = delay and task.delay(delay, run) or task.defer(run)
+    return entry
+end
+function Motion:RetireTween(tween)
+    self.RetiredTweens[tween] = true
+    self:Spawn(self.Root, function()
+        self.RetiredTweens[tween] = nil
+        tween:Destroy()
+    end)
+end
+function Motion:CreateWindow(obj, info, goals)
+    -- Keep handles referenced by the frozen cancellation loop valid until that loop releases them.
+    for previous, kind in pairs(self.RetiredTweens) do
+        if kind == "window" then
+            local referenced = false
+            for _, active in ipairs(_G.activeUITweens or {}) do if active == previous then referenced = true end end
+            if not referenced then self.RetiredTweens[previous] = nil; previous:Destroy() end
+        end
+    end
+    -- Exactly the original native Create call: no cancellation, duration or goal adjustment.
+    local tween = TweenService:Create(obj, info, goals)
+    if obj == self.MainScale then self.WindowScaleTween = tween end
+    local connection
+    connection = tween.Completed:Connect(function()
+        self.WindowTweens[tween] = nil
+        connection:Disconnect()
+        self.RetiredTweens[tween] = "window"
+        if self.WindowScaleTween == tween then
+            self.WindowScaleTween = nil
+            if self.Alive and self.ClampLayout then self.ClampLayout() end
+        end
+    end)
+    self.WindowTweens[tween] = connection
+    return tween
+end
+function Motion:ClearKeyCapture()
+    local capture = self.KeyCapture
+    self.KeyCapture = nil
+    if capture and capture.Cancel then capture.Cancel() end
+end
+function Motion:SetKeyCapture(owner, cancel)
+    self:ClearKeyCapture()
+    self.KeyCapture = {Owner = owner, Cancel = cancel}
+end
+function Motion:BindKey(owner, handler)
+    self.Keys[owner] = handler
+    if self.KeyConnection then return end
+    self.KeyConnection = self:Connect(self.Root, UserInputService.InputBegan, function(input, processed)
+        if processed or input.UserInputType ~= Enum.UserInputType.Keyboard then return end
+        local capture = self.KeyCapture
+        if capture then
+            local current = self.Keys[capture.Owner]
+            if current then current(input, true) end
+            return
+        end
+        for object, current in pairs(self.Keys) do
+            local callback, argument = current(input, false)
+            if callback then task.spawn(callback, argument) end
+        end
+    end)
+end
+function Motion:Cancel(obj, finish)
+    local entry = self.Animations[obj]
+    if not entry then return end
+    self.Animations[obj] = nil
+    entry.Connection:Disconnect()
+    entry.Tween:Cancel()
+    if finish and obj.Parent then
+        for key, value in pairs(entry.Goals) do assign(obj, key, value) end
+    end
+    entry.Tween:Destroy()
+end
+function Motion:IsVisible(obj)
+    if not self.Alive or not self.Root.Enabled then return false end
+    while obj and obj ~= self.Root do
+        if obj:IsA("GuiObject") and not obj.Visible then return false end
+        obj = obj.Parent
+    end
+    return obj == self.Root
+end
+function Motion:Create(obj, info, goals)
+    self:Cancel(obj, false)
+    -- Hidden controls receive their final state without a running visual animation.
+    if not self:IsVisible(obj) then info = TweenInfo.new(0) end
+    local tween = TweenService:Create(obj, info, goals)
+    local entry = {Tween = tween, Goals = goals}
+    self.Animations[obj] = entry
+    entry.Connection = tween.Completed:Connect(function()
+        if self.Animations[obj] == entry then self.Animations[obj] = nil end
+        entry.Connection:Disconnect()
+        -- Consumers may subscribe to Completed, so destroy after signal dispatch.
+        self:RetireTween(tween)
+    end)
+    return tween
+end
+function Motion:StopVisuals(root)
+    local objects = {}
+    for obj in pairs(self.Animations) do
+        if obj == root or obj:IsDescendantOf(root) then table.insert(objects, obj) end
+    end
+    for _, obj in ipairs(objects) do self:Cancel(obj, true) end
+end
+function Motion:EndPointer(released)
+    local pointer = self.Pointer
+    if not pointer then return end
+    self.Pointer = nil
+    self:Disconnect(pointer.Move)
+    self:Disconnect(pointer.End)
+    if pointer.Finish then pointer.Finish(released) end
+end
+function Motion:BeginPointer(owner, input, move, finish)
+    self:EndPointer(false)
+    local pointer = {Owner = owner, Input = input, Finish = finish}
+    self.Pointer = pointer
+    pointer.Move = self:Connect(owner, UserInputService.InputChanged, function(changed)
+        if input.UserInputType == Enum.UserInputType.Touch then
+            if changed == input then move(changed) end
+        elseif changed.UserInputType == Enum.UserInputType.MouseMovement then
+            move(changed)
+        end
+    end)
+    pointer.End = self:Connect(owner, UserInputService.InputEnded, function(ended)
+        if ended == input or (input.UserInputType == Enum.UserInputType.MouseButton1 and ended.UserInputType == Enum.UserInputType.MouseButton1) then
+            self:EndPointer(true)
+        end
+    end)
+end
+function Motion:Remove(obj)
+    self:Cancel(obj, false)
+    self.ThemeObjects[obj] = nil
+    self.PendingTheme[obj] = nil
+    self.Feedback[obj] = nil
+    local removedControl = self.Controls[obj] or self.Sections[obj]
+    self.Controls[obj] = nil
+    self.Sections[obj] = nil
+    self.Keys[obj] = nil
+    if self.KeyCapture and self.KeyCapture.Owner == obj then self:ClearKeyCapture() end
+    if self.KeyConnection and not next(self.Keys) then self:Disconnect(self.KeyConnection); self.KeyConnection = nil end
+    if obj == self.Stats or obj == self.Main then
+        if self.FrameConnection then self.FrameConnection:Disconnect(); self.FrameConnection = nil end
+    end
+    for i = #self.Tabs, 1, -1 do
+        local tab = self.Tabs[i]
+        if tab[1] == obj or tab[2] == obj then
+            table.remove(self.Tabs, i)
+            if self.BeforeSearch == tab then self.BeforeSearch = nil end
+            if library.currentTab == tab then library.currentTab = nil end
+        end
+    end
+    for connection, owner in pairs(self.Connections) do
+        if owner == obj then self:Disconnect(connection) end
+    end
+    for entry in pairs(self.Tasks) do
+        if entry.Owner == obj then
+            self.Tasks[entry] = nil
+            if entry.Thread and coroutine.status(entry.Thread) ~= "dead" and entry.Thread ~= coroutine.running() then pcall(task.cancel, entry.Thread) end
+        end
+    end
+    if self.Pointer and self.Pointer.Owner == obj then self:EndPointer(false) end
+    for i = #self.Notifications, 1, -1 do
+        if self.Notifications[i] == obj then table.remove(self.Notifications, i) end
+    end
+end
+function Motion:Destroy()
+    if not self.Alive then return end
+    self.Alive = false
+    self:ClearKeyCapture()
+    self:EndPointer(false)
+    if self.FrameConnection then self.FrameConnection:Disconnect(); self.FrameConnection = nil end
+    for connection in pairs(self.Connections) do connection:Disconnect() end
+    table.clear(self.Connections)
+    for obj in pairs(self.Animations) do self:Cancel(obj, false) end
+    for tween, connection in pairs(self.WindowTweens) do
+        connection:Disconnect()
+        tween:Cancel()
+        tween:Destroy()
+    end
+    table.clear(self.WindowTweens)
+    for tween in pairs(self.RetiredTweens) do tween:Destroy() end
+    table.clear(self.RetiredTweens)
+    for entry in pairs(self.Tasks) do
+        if entry.Thread and coroutine.status(entry.Thread) ~= "dead" and entry.Thread ~= coroutine.running() then pcall(task.cancel, entry.Thread) end
+    end
+    table.clear(self.Tasks)
+    table.clear(self.ThemeObjects)
+    table.clear(self.PendingTheme)
+    table.clear(self.Feedback)
+    table.clear(self.Controls)
+    table.clear(self.Keys)
+    table.clear(self.Sections)
+    table.clear(self.Tabs)
+    table.clear(self.Notifications)
+    UIManagers[self.Root] = nil
+    if latestUI == self then latestUI = nil end
+    library.currentTab = nil
+    for _, tween in ipairs(_G.activeUITweens or {}) do
+        pcall(function() tween:Cancel(); tween:Destroy() end)
+    end
+    if _G.activeUITweens then table.clear(_G.activeUITweens) end
+end
+function Motion.new(root)
+    local self = setmetatable({Root = root, Alive = true, Connections = {}, Animations = {}, Tasks = {}, WindowTweens = {}, RetiredTweens = {},
+        ThemeObjects = {}, PendingTheme = {}, Feedback = {}, Controls = {}, Keys = {}, Sections = {}, Tabs = {}, Notifications = {},
+        ThemePasses = 0, ThemeWrites = 0, StatisticsUpdates = 0}, Motion)
+    UIManagers[root] = self
+    latestUI = self
+    self:Connect(root, root.DescendantAdded, function(obj) self:QueueTheme(obj) end)
+    self:Connect(root, root.DescendantRemoving, function(obj) self:Remove(obj) end)
+    self:Connect(root, root.Destroying, function() self:Destroy() end)
+    self:Connect(root, root:GetPropertyChangedSignal("Enabled"), function() self:SyncVisibility() end)
+    return self
+end
+function Motion:Write(obj, key, value)
+    if assign(obj, key, value) then self.ThemeWrites = self.ThemeWrites + 1 end
+end
+function Motion:GetTheme()
+    local color = FontColorPresets[self.BackgroundFontColor or setting("FontColorMode")] or Color3.fromRGB(255, 255, 255)
+    return {Text = color, Font = FontTypes[setting("FontMode")] or Enum.Font.GothamBold,
+        Size = finite(setting("FontSizeOffset")) and setting("FontSizeOffset") or 0,
+        Surface = Color3.fromRGB(255, 255, 255), Raised = Color3.fromRGB(225, 225, 230),
+        Base = Color3.fromRGB(245, 247, 250), Accent = Color3.fromRGB(0, 122, 255),
+        Palette = Palettes[setting("Palette")] or Palettes["赛博朋克 (Cyberpunk)"]}
+end
+local function themeRelevant(obj)
+    return obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") or obj:GetAttribute("IsControlBG")
+end
+function Motion:QueueTheme(obj)
+    self.PendingTheme[obj] = true
+    self:RefreshTheme()
+end
+function Motion:ApplyTheme(obj, theme, font, color, size, surface, palette)
+    if not obj.Parent then return end
+    if surface and obj:GetAttribute("IsControlBG") then
+        self:Write(obj, "BackgroundTransparency", interfaceTransparency)
+    end
+    if not (obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox")) then return end
+    local base = obj:GetAttribute("BaseTextSize")
+    if not base then base = obj.TextSize; obj:SetAttribute("BaseTextSize", base) end
+    local title = obj.Name == "Open" or obj.Name == "ScriptTitle"
+    if not title and (obj.Name == "Icon" or obj.Name == "Avatar" or obj.Name == "Crown") then return end
+    if font and obj.Name ~= "StatsText" then self:Write(obj, "Font", theme.Font) end
+    if size then self:Write(obj, "TextSize", base + theme.Size) end
+    if color then
+        self:Write(obj, "TextColor3", title and Color3.fromRGB(30, 30, 30) or theme.Text)
+        self:Write(obj, "TextStrokeTransparency", self.HasBackground and (title and 0.5 or 0.25) or 1)
+        self:Write(obj, "TextStrokeColor3", title and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(0, 0, 0))
+        if obj:IsA("TextBox") then self:Write(obj, "PlaceholderColor3", theme.Text) end
+    end
+end
+function Motion:RefreshTheme()
+    if self.ThemeQueued or not self.Alive then return end
+    self.ThemeQueued = true
+    self:Spawn(self.Root, function()
+        self.ThemeQueued = false
+        local theme = self:GetTheme()
+        local previous = self.LastTheme
+        local font = not previous or previous.Font ~= theme.Font
+        local size = not previous or previous.Size ~= theme.Size
+        local color = not previous or previous.Text ~= theme.Text or previous.Background ~= self.HasBackground
+        local palette = not previous or previous.Palette ~= theme.Palette
+        local surface = color or palette or not previous or previous.Alpha ~= interfaceTransparency
+        if font or size or color or surface or palette then
+            self.ThemePasses = self.ThemePasses + 1
+            for obj in pairs(self.ThemeObjects) do self:ApplyTheme(obj, theme, font, color, size, surface, palette) end
+        end
+        for obj in pairs(self.PendingTheme) do
+            if obj.Parent and themeRelevant(obj) then
+                self.ThemeObjects[obj] = true
+                self:ApplyTheme(obj, theme, true, true, true, true, true)
+            end
+        end
+        table.clear(self.PendingTheme)
+        theme.Background = self.HasBackground
+        theme.Alpha = interfaceTransparency
+        self.LastTheme = theme
+        if self.Shadow then
+            local intensity = finite(setting("GlowIntensity")) and math.clamp(setting("GlowIntensity"), 0, 100) or 50
+            self:Write(self.Shadow, "ImageColor3", setting("GlowEnabled") and (FontColorPresets[setting("GlowColor")] or theme.Accent) or Color3.new(0, 0, 0))
+            self:Write(self.Shadow, "ImageTransparency", setting("GlowEnabled") and math.clamp(1 - intensity / 100, 0, 1) or 0.7)
+            self:Write(self.Shadow, "Size", UDim2.new(1, setting("GlowEnabled") and 43 + intensity * 0.3 or 43, 1, setting("GlowEnabled") and 43 + intensity * 0.3 or 43))
+        end
+        self:SyncVisibility()
+    end)
+end
+function Motion:FeedbackState(obj, state)
+    if not obj.Parent then return end
+    if obj:GetAttribute("IsControlBG") then
+        local alpha = math.clamp(interfaceTransparency - (state.Pressed and 0.12 or state.Hovered and 0.05 or 0), 0, 1)
+        self:Create(obj, TweenInfo.new(state.Pressed and 0.08 or 0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundTransparency = alpha}):Play()
+    end
+end
+function Motion:BindFeedback(obj)
+    if self.Feedback[obj] then return end
+    local state = {Hovered = false, Pressed = false}
+    self.Feedback[obj] = state
+    self:Connect(obj, obj.MouseEnter, function() state.Hovered = true; self:FeedbackState(obj, state) end)
+    self:Connect(obj, obj.MouseLeave, function() state.Hovered = false; state.Pressed = false; self:FeedbackState(obj, state) end)
+    self:Connect(obj, obj.InputBegan, function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then state.Pressed = true; self:FeedbackState(obj, state) end
+    end)
+    self:Connect(obj, obj.InputEnded, function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then state.Pressed = false; self:FeedbackState(obj, state) end
+    end)
+end
+function Motion:SyncVisibility()
+    if not self.Alive or not self.Main or not self.Stats then return end
+    local visible = self:IsVisible(self.Stats)
+    if not self.Root.Enabled or not self.Main.Visible then
+        self:ClearKeyCapture()
+        self:EndPointer(false)
+        self:StopVisuals(self.Main)
+    end
+    if not visible and self.FrameConnection then self.FrameConnection:Disconnect(); self.FrameConnection = nil end
+    if not visible then
+        self.Frames = 0; self.Elapsed = 0
+        return
+    end
+    if not setting("MarqueeEnabled") then assign(self.Gradient, "Rotation", 45) end
+    if self.FrameConnection then return end
+    self.Frames = 0; self.Elapsed = 0
+    self.FrameConnection = RunService.RenderStepped:Connect(function(dt)
+        self.Frames = self.Frames + 1
+        self.Elapsed = self.Elapsed + dt
+        if setting("MarqueeEnabled") then
+            self.Gradient.Rotation = (os.clock() * (finite(setting("MarqueeSpeed")) and setting("MarqueeSpeed") or 1) * 60) % 360
+        end
+        if self.Elapsed < 1 then return end
+        local fps = math.floor(self.Frames / self.Elapsed)
+        self.Frames = 0; self.Elapsed = 0
+        local ping = 0
+        pcall(function() ping = math.floor(game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue()) end)
+        local text = string.format("FPS: %d\nPing: %dms\n时间: %s", fps, ping, os.date("%H:%M:%S"))
+        if assign(self.Stats, "Text", text) then self.StatisticsUpdates = self.StatisticsUpdates + 1 end
+    end)
+end
+function Motion:AddControl(module, text, section)
+    self.Controls[module] = {Text = tostring(text), Section = section}
+end
+function library:GetUIStats()
+    local stats = {Windows = 0, Connections = 0, Animations = 0, ThemeObjects = 0, PendingTasks = 0,
+        FrameConnections = 0, ThemePasses = 0, ThemeWrites = 0, StatisticsUpdates = 0}
+    for _, owner in pairs(UIManagers) do
+        stats.Windows = stats.Windows + 1
+        for connection in pairs(owner.Connections) do if connection.Connected then stats.Connections = stats.Connections + 1 end end
+        for _ in pairs(owner.Animations) do stats.Animations = stats.Animations + 1 end
+        for _ in pairs(owner.WindowTweens) do stats.Animations = stats.Animations + 1 end
+        for _ in pairs(owner.ThemeObjects) do stats.ThemeObjects = stats.ThemeObjects + 1 end
+        for _ in pairs(owner.Tasks) do stats.PendingTasks = stats.PendingTasks + 1 end
+        if owner.FrameConnection then stats.FrameConnections = stats.FrameConnections + 1 end
+        stats.ThemePasses = stats.ThemePasses + owner.ThemePasses
+        stats.ThemeWrites = stats.ThemeWrites + owner.ThemeWrites
+        stats.StatisticsUpdates = stats.StatisticsUpdates + owner.StatisticsUpdates
+    end
+    return stats
+end
+function library:Destroy()
+    local roots = {}
+    for root in pairs(UIManagers) do table.insert(roots, root) end
+    for _, root in ipairs(roots) do UIManagers[root]:Destroy(); root:Destroy() end
+end
+function library:Notify(title, text, duration)
+    return pcall(function()
+        game:GetService("StarterGui"):SetCore("SendNotification", {Title = tostring(title), Text = tostring(text), Duration = finite(duration) and duration > 0 and duration or 3})
+    end)
+end
+if _G.Script_UI_V15 and type(_G.Script_UI_V15.Destroy) == "function" then pcall(function() _G.Script_UI_V15:Destroy() end) end
+-- YE_UI_MODERN_CORE_END
+
+
 function Tween(obj, t, data)
-    services.TweenService:Create(obj, TweenInfo.new(t[1], Enum.EasingStyle[t[2]], Enum.EasingDirection[t[3]]), data):Play()
+    local owner = managerFor(obj)
+    local info = TweenInfo.new(t[1], Enum.EasingStyle[t[2]], Enum.EasingDirection[t[3]])
+    if owner then owner:Create(obj, info, data):Play() else TweenService:Create(obj, info, data):Play() end
     return true
 end
 
 function Ripple(obj)
-    spawn(function()
-        if obj.ClipsDescendants ~= true then
-            obj.ClipsDescendants = true
-        end
-        local Ripple = Instance.new("Frame")
-        local RippleCorner = Instance.new("UICorner")
-        Ripple.Name = "Ripple"
-        Ripple.Parent = obj
-        Ripple.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        Ripple.BackgroundTransparency = 0.4
-        Ripple.BorderSizePixel = 0
-        Ripple.ZIndex = 8
-        RippleCorner.CornerRadius = UDim.new(1, 0)
-        RippleCorner.Parent = Ripple
-        
-        local maxSize = math.max(obj.AbsoluteSize.X, obj.AbsoluteSize.Y) * 1.5
-        local x = mouse.X - obj.AbsolutePosition.X
-        local y = mouse.Y - obj.AbsolutePosition.Y
-        
-        Ripple.Size = UDim2.new(0, 0, 0, 0)
-        Ripple.Position = UDim2.new(0, x, 0, y)
-        
-        services.TweenService:Create(Ripple, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-            Size = UDim2.new(0, maxSize, 0, maxSize),
-            Position = UDim2.new(0, x - maxSize / 2, 0, y - maxSize / 2),
-            BackgroundTransparency = 1
-        }):Play()
-        
-        wait(0.4)
-        Ripple:Destroy()
-    end)
+    local owner = managerFor(obj)
+    if not owner or not owner:IsVisible(obj) then return end
+    local ripple = obj:FindFirstChild("InteractionRipple")
+    if not ripple then
+        ripple = Instance.new("Frame")
+        ripple.Name = "InteractionRipple"
+        ripple.AnchorPoint = Vector2.new(0.5, 0.5)
+        ripple.BorderSizePixel = 0
+        ripple.ZIndex = obj.ZIndex + 1
+        ripple.Parent = obj
+        Instance.new("UICorner", ripple).CornerRadius = UDim.new(1, 0)
+    end
+    owner:Cancel(ripple, false)
+    obj.ClipsDescendants = true
+    ripple.BackgroundColor3 = owner:GetTheme().Accent
+    ripple.BackgroundTransparency = 0.87
+    ripple.Position = UDim2.new(0.5, 0, 0.5, 0)
+    ripple.Size = UDim2.new(0, 4, 0, 4)
+    local extent = math.max(obj.AbsoluteSize.X, obj.AbsoluteSize.Y) * 1.15
+    local tween = owner:Create(ripple, TweenInfo.new(0.26, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(0, extent, 0, extent), BackgroundTransparency = 1})
+    tween.Completed:Once(function(state) if state == Enum.PlaybackState.Completed and ripple.Parent then ripple:Destroy() end end)
+    tween:Play()
 end
-
-local toggled = false
-local switchingTabs = false
 
 function switchTab(new)
-    if switchingTabs then return end
+    if not new or not new[2].Parent then return end
     local old = library.currentTab
-    
-    if old == nil then
-        new[2].Position = UDim2.new(0, 0, 1.2, 0)
-        services.TweenService:Create(new[2], TweenInfo.new(0.4, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Position = UDim2.new(0, 0, 0, 0)}):Play()
-        
-        library.currentTab = new
-        services.TweenService:Create(new[1].Indicator, TweenInfo.new(0.1), {BackgroundTransparency = 0}):Play()
-        services.TweenService:Create(new[1].TabText, TweenInfo.new(0.1), {TextTransparency = 0}):Play()
-        services.TweenService:Create(new[1].TabBtn, TweenInfo.new(0.2), {BackgroundTransparency = 0.9}):Play()
-        return
+    if old == new then return end
+    local owner = managerFor(new[2])
+    if not owner then return end
+    local function select(tab, selected)
+        local indicator = tab[1]:FindFirstChild("Indicator")
+        local button = tab[1]:FindFirstChild("TabBtn")
+        local title = tab[1]:FindFirstChild("TabText")
+        if indicator then owner:Create(indicator, TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundTransparency = selected and 0 or 1}):Play() end
+        if button then owner:Create(button, TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundTransparency = selected and 0.9 or 1}):Play() end
+        if title then owner:Create(title, TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {TextTransparency = selected and 0 or 0.2}):Play() end
     end
-
-    if old[1] == new[1] then return end
-    switchingTabs = true
     library.currentTab = new
-
-    services.TweenService:Create(old[1].Indicator, TweenInfo.new(0.1), {BackgroundTransparency = 1}):Play()
-    services.TweenService:Create(new[1].Indicator, TweenInfo.new(0.1), {BackgroundTransparency = 0}):Play()
-    services.TweenService:Create(old[1].TabText, TweenInfo.new(0.1), {TextTransparency = 0.2}):Play()
-    services.TweenService:Create(new[1].TabText, TweenInfo.new(0.1), {TextTransparency = 0}):Play()
-    services.TweenService:Create(old[1].TabBtn, TweenInfo.new(0.2), {BackgroundTransparency = 1}):Play()
-    services.TweenService:Create(new[1].TabBtn, TweenInfo.new(0.2), {BackgroundTransparency = 0.9}):Play()
-
-    services.TweenService:Create(old[2], TweenInfo.new(0.35, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Position = UDim2.new(0, 0, -1.2, 0)}):Play()
-    
-    new[2].Position = UDim2.new(0, 0, 1.2, 0)
-    services.TweenService:Create(new[2], TweenInfo.new(0.35, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Position = UDim2.new(0, 0, 0, 0)}):Play()
-
-    task.wait(0.35)
-    switchingTabs = false
+    if old and old[2].Parent then
+        owner:StopVisuals(old[2])
+        old[2].Visible = false
+        select(old, false)
+    end
+    new[2].Visible = true
+    new[2].Position = UDim2.new(0, 0, 0, 6)
+    select(new, true)
+    owner:Create(new[2], TweenInfo.new(0.18, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Position = UDim2.new()}):Play()
 end
 
-function drag(frame, hold)
-    if not hold then hold = frame end
-    local dragging, dragInput, dragStart, startPos
-
-    local function update(input)
-        local delta = input.Position - dragStart
-        frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-    end
-
-    hold.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = true
-            dragStart = input.Position
-            startPos = frame.Position
-
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
+function drag(frame, hold, onReleased)
+    hold = hold or frame
+    local owner = managerFor(frame)
+    if not owner then return end
+    hold.Active = true
+    owner:Connect(hold, hold.InputBegan, function(input)
+        if input.UserInputType ~= Enum.UserInputType.MouseButton1 and input.UserInputType ~= Enum.UserInputType.Touch then return end
+        if frame.Name == "WindowLayout" then
+            local ok, hits = pcall(function() return services.CoreGui:GetGuiObjectsAtPosition(input.Position.X, input.Position.Y) end)
+            if ok then
+                for _, object in ipairs(hits) do
+                    if object:IsDescendantOf(owner.Main) and (object:IsA("TextButton") or object:IsA("TextBox") or (input.UserInputType == Enum.UserInputType.Touch and object:IsA("ScrollingFrame"))) then return end
                 end
-            end)
+            end
         end
-    end)
-
-    frame.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement then
-            dragInput = input
-        end
-    end)
-
-    services.UserInputService.InputChanged:Connect(function(input)
-        if input == dragInput and dragging then
-            update(input)
-        end
+        local start, position = input.Position, frame.Position
+        owner:BeginPointer(hold, input, function(changed)
+            local delta = changed.Position - start
+            local x, y = position.X.Offset + delta.X, position.Y.Offset + delta.Y
+            assign(frame, "Position", UDim2.new(position.X.Scale, x, position.Y.Scale, y))
+            if frame.Name == "WindowLayout" and owner.ClampLayout then owner.ClampLayout() end
+        end, function(released) if released and onReleased then onReleased() end end)
     end)
 end
 
 function library.new(library, name, theme)
+    local motion
+    library:Destroy()
+    library.currentTab = nil
     for _, v in next, services.CoreGui:GetChildren() do
         if v.Name == "zhunzhi" then v:Destroy() end
     end
         
-    local TS = game:GetService("TweenService")
+    local TS = {Create = function(_, object, info, goals) return motion:CreateWindow(object, info, goals) end}
     
     MainColor = Color3.fromRGB(235, 235, 240)
     Background = Color3.fromRGB(245, 247, 250)
@@ -316,10 +716,26 @@ function library.new(library, name, theme)
     dogent.Name = "zhunzhi"
     dogent.Parent = services.CoreGui
 
-    function UiDestroy() dogent:Destroy() end
+    motion = Motion.new(dogent)
+    local window
+    local buildingSettings = false
+    local WindowLayout = Instance.new("Frame")
+    WindowLayout.Name = "WindowLayout"
+    WindowLayout.BackgroundTransparency = 1
+    WindowLayout.Size = UDim2.new(1, 0, 1, 0)
+    WindowLayout.Position = UDim2.new()
+    WindowLayout.Active = false
+    WindowLayout.ClipsDescendants = false
+    WindowLayout.Parent = dogent
+    local function PersistLayout()
+        getgenv().CurrentUIWidth = CloudMain.Size.X.Offset
+        getgenv().CurrentUIHeight = CloudMain.Size.Y.Offset
+    end
+    function UiDestroy() motion:Destroy(); dogent:Destroy() end
 
     CloudMain.Name = "CloudMain"
-    CloudMain.Parent = dogent
+    CloudMain.Parent = WindowLayout
+    motion.Main = CloudMain
     CloudMain.AnchorPoint = Vector2.new(0.5, 0.5)
     CloudMain.BackgroundColor3 = Background
     CloudMain.BorderColor3 = MainColor
@@ -329,8 +745,7 @@ function library.new(library, name, theme)
     CloudMain.ZIndex = 1
     CloudMain.Visible = true 
     CloudMain.Active = true
-    CloudMain.Draggable = true   
-    drag(CloudMain)
+    CloudMain.Draggable = false
 
     local BasePlate = Instance.new("Frame")
     BasePlate.Name = "BasePlate"
@@ -350,8 +765,8 @@ function library.new(library, name, theme)
     CustomBG.Size = UDim2.new(1, 0, 1, 0)
     CustomBG.BackgroundTransparency = 1
     CustomBG.ZIndex = 0 
-    CustomBG.Image = UI_CONFIG.BGImage or ""
-    CustomBG.ImageTransparency = UI_CONFIG.BGTransparency or 0
+    CustomBG.Image = setting("BGImage") or ""
+    CustomBG.ImageTransparency = setting("BGTransparency") or 0
     CustomBG.ScaleType = Enum.ScaleType.Crop 
     
     local CustomBGCorner = Instance.new("UICorner")
@@ -360,68 +775,63 @@ function library.new(library, name, theme)
 
     local RefreshGlobalUI
 
+    local randomAsset, backgroundPending
     local function GetLocalRandomBG(url, index)
-        local folderName = "UI_Assets"
-        local fileName = folderName .. "/bg_" .. tostring(index) .. ".jpg"
-        if not isfolder(folderName) then makefolder(folderName) end
-        if not isfile(fileName) then
-            local s, d = pcall(function() return game:HttpGet(url) end)
-            if s and d then writefile(fileName, d) else return "" end
-        end
-        return getcustomasset(fileName)
+        if not (isfolder and makefolder and isfile and writefile and getcustomasset) then return "" end
+        local success, asset = pcall(function()
+            local folderName = "UI_Assets"
+            local fileName = folderName .. "/bg_" .. tostring(index) .. ".jpg"
+            if not isfolder(folderName) then makefolder(folderName) end
+            if not isfile(fileName) then
+                local content = game:HttpGet(url)
+                if type(content) ~= "string" or content == "" then return "" end
+                writefile(fileName, content)
+            end
+            return getcustomasset(fileName)
+        end)
+        return success and asset or ""
     end
-
     local function UpdateBackgroundDisplay()
-        if not CustomBG then return end
-        local hasImage = false
-        if UI_CONFIG.UseRandomBG then
-            local assetId = GetLocalRandomBG(SelectedBGURL, SelectedBGIndex)
-            if assetId ~= "" then 
-                CustomBG.Image = assetId 
-                hasImage = true
+        if not motion.Alive then return end
+        local image = ""
+        if setting("UseRandomBG") then
+            image = randomAsset or ""
+            if randomAsset == nil and not backgroundPending then
+                backgroundPending = true
+                motion:Spawn(CustomBG, function()
+                    randomAsset = GetLocalRandomBG(SelectedBGURL, SelectedBGIndex)
+                    backgroundPending = false
+                    if motion.Alive and setting("UseRandomBG") then UpdateBackgroundDisplay() end
+                end)
             end
-            CustomBG.ImageTransparency = UI_CONFIG.BGTransparency or 0
-        else
-            if UI_CONFIG.BGImage and UI_CONFIG.BGImage ~= "" and UI_CONFIG.BGImage ~= "0" then
-                CustomBG.Image = string.match(UI_CONFIG.BGImage, "^%d+$") and "rbxassetid://" .. UI_CONFIG.BGImage or UI_CONFIG.BGImage
-                hasImage = true
-            else
-                CustomBG.Image = ""
-            end
-            CustomBG.ImageTransparency = UI_CONFIG.BGTransparency or 0
+        elseif setting("BGImage") and setting("BGImage") ~= "" and setting("BGImage") ~= "0" then
+            image = string.match(setting("BGImage"), "^%d+$") and "rbxassetid://" .. setting("BGImage") or setting("BGImage")
         end
-        
-        if hasImage then
-            BasePlate.BackgroundTransparency = 1
-            CustomBG.Visible = true
-            interfaceTransparency = 0.8
-            if SB then SB.BackgroundTransparency = 0.8 end
-            if Side then Side.BackgroundTransparency = 0.8 end
-            UI_CONFIG.FontColorMode = "纯净洁白"
-        else
-            BasePlate.BackgroundTransparency = 0.1
-            CustomBG.Visible = false
-            interfaceTransparency = 0.2
-            if SB then SB.BackgroundTransparency = 0.7 end
-            if Side then Side.BackgroundTransparency = 0.7 end
-            UI_CONFIG.FontColorMode = "默认深色"
-        end
+        assign(CustomBG, "Image", image)
+        assign(CustomBG, "ImageTransparency", math.clamp(setting("BGTransparency") or 0, 0, 1))
+        local hasImage = image ~= ""
+        motion.HasBackground = hasImage
+        assign(BasePlate, "BackgroundTransparency", hasImage and 1 or 0.1)
+        assign(CustomBG, "Visible", hasImage)
+        interfaceTransparency = hasImage and 0.8 or 0.2
+        motion.BackgroundFontColor = hasImage and "纯净洁白" or "默认深色"
+        assign(SB, "BackgroundTransparency", hasImage and 0.8 or 0.7)
+        assign(Side, "BackgroundTransparency", hasImage and 0.8 or 0.7)
         if RefreshGlobalUI then RefreshGlobalUI() end
     end
-
-    task.spawn(function()
-        UpdateBackgroundDisplay()
-    end)
+    motion:Spawn(dogent, UpdateBackgroundDisplay)
 
     local uiScale = Instance.new("UIScale")
     uiScale.Name = "UIScale_UI"
     uiScale.Parent = CloudMain
+    motion.MainScale = uiScale
     uiScale.Scale = UI_CONFIG.Scale
     
-    services.UserInputService.InputBegan:Connect(function(input, gpe)
+    motion:Connect(CloudMain, services.UserInputService.InputBegan, function(input, gpe)
         if not gpe and input.KeyCode == Enum.KeyCode.S and services.UserInputService:IsKeyDown(Enum.KeyCode.LeftAlt) then
             UI_CONFIG.Scale = DefaultScale
             uiScale.Scale = DefaultScale
+            if window and window.SyncScale then window.SyncScale(DefaultScale) end
             SaveConfig()
             pcall(function()
                 game:GetService("StarterGui"):SetCore("SendNotification", {
@@ -546,45 +956,50 @@ function library.new(library, name, theme)
         if state then
             ConfirmOverlay.Visible = true
             isConfirming = true
-            TS:Create(ConfirmOverlay, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {BackgroundTransparency = 0.6}):Play()
-            TS:Create(ConfirmMain, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {BackgroundTransparency = 0.1}):Play()
-            TS:Create(ConfirmUIScale, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = 1}):Play()
-            TS:Create(ConfirmStroke, TweenInfo.new(0.3), {Transparency = 0}):Play()
-            TS:Create(ConfirmTitle, TweenInfo.new(0.3), {TextTransparency = 0}):Play()
-            TS:Create(BtnYes, TweenInfo.new(0.3), {BackgroundTransparency = interfaceTransparency, TextTransparency = 0}):Play()
-            TS:Create(BtnYesStroke, TweenInfo.new(0.3), {Transparency = 0.92}):Play()
-            TS:Create(BtnNo, TweenInfo.new(0.3), {BackgroundTransparency = interfaceTransparency, TextTransparency = 0}):Play()
-            TS:Create(BtnNoStroke, TweenInfo.new(0.3), {Transparency = 0.92}):Play()
+            motion:Create(ConfirmOverlay, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {BackgroundTransparency = 0.6}):Play()
+            motion:Create(ConfirmMain, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {BackgroundTransparency = 0.1}):Play()
+            motion:Create(ConfirmUIScale, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = 1}):Play()
+            motion:Create(ConfirmStroke, TweenInfo.new(0.3), {Transparency = 0}):Play()
+            motion:Create(ConfirmTitle, TweenInfo.new(0.3), {TextTransparency = 0}):Play()
+            motion:Create(BtnYes, TweenInfo.new(0.3), {BackgroundTransparency = interfaceTransparency, TextTransparency = 0}):Play()
+            motion:Create(BtnYesStroke, TweenInfo.new(0.3), {Transparency = 0.92}):Play()
+            motion:Create(BtnNo, TweenInfo.new(0.3), {BackgroundTransparency = interfaceTransparency, TextTransparency = 0}):Play()
+            motion:Create(BtnNoStroke, TweenInfo.new(0.3), {Transparency = 0.92}):Play()
         else
             isConfirming = false
-            TS:Create(ConfirmOverlay, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {BackgroundTransparency = 1}):Play()
-            TS:Create(ConfirmMain, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {BackgroundTransparency = 1}):Play()
-            TS:Create(ConfirmUIScale, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {Scale = 0.8}):Play()
-            TS:Create(ConfirmStroke, TweenInfo.new(0.2), {Transparency = 1}):Play()
-            TS:Create(ConfirmTitle, TweenInfo.new(0.2), {TextTransparency = 1}):Play()
-            TS:Create(BtnYes, TweenInfo.new(0.2), {BackgroundTransparency = 1, TextTransparency = 1}):Play()
-            TS:Create(BtnYesStroke, TweenInfo.new(0.2), {Transparency = 1}):Play()
-            TS:Create(BtnNo, TweenInfo.new(0.2), {BackgroundTransparency = 1, TextTransparency = 1}):Play()
-            local closeTween = TS:Create(BtnNoStroke, TweenInfo.new(0.2), {Transparency = 1})
+            motion:Create(ConfirmOverlay, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {BackgroundTransparency = 1}):Play()
+            motion:Create(ConfirmMain, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {BackgroundTransparency = 1}):Play()
+            motion:Create(ConfirmUIScale, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {Scale = 0.8}):Play()
+            motion:Create(ConfirmStroke, TweenInfo.new(0.2), {Transparency = 1}):Play()
+            motion:Create(ConfirmTitle, TweenInfo.new(0.2), {TextTransparency = 1}):Play()
+            motion:Create(BtnYes, TweenInfo.new(0.2), {BackgroundTransparency = 1, TextTransparency = 1}):Play()
+            motion:Create(BtnYesStroke, TweenInfo.new(0.2), {Transparency = 1}):Play()
+            motion:Create(BtnNo, TweenInfo.new(0.2), {BackgroundTransparency = 1, TextTransparency = 1}):Play()
+            local closeTween = motion:Create(BtnNoStroke, TweenInfo.new(0.2), {Transparency = 1})
             closeTween:Play()
             closeTween.Completed:Once(function() if not isConfirming then ConfirmOverlay.Visible = false end end)
         end
     end
 
     local activeYesConn, activeNoConn
+    local function DisconnectConfirm()
+        motion:Disconnect(activeYesConn); motion:Disconnect(activeNoConn)
+        activeYesConn = nil; activeNoConn = nil
+    end
     local function ShowConfirm(title, yesCallback, noCallback)
         ConfirmTitle.Text = title
-        if activeYesConn then activeYesConn:Disconnect() end
-        if activeNoConn then activeNoConn:Disconnect() end
+        DisconnectConfirm()
         
-        activeYesConn = BtnYes.MouseButton1Click:Connect(function()
-            spawn(function() Ripple(BtnYes) end)
+        activeYesConn = motion:Connect(BtnYes, BtnYes.MouseButton1Click, function()
+            DisconnectConfirm()
+            Ripple(BtnYes)
             toggleConfirmUI(false)
             if yesCallback then yesCallback() end
         end)
         
-        activeNoConn = BtnNo.MouseButton1Click:Connect(function()
-            spawn(function() Ripple(BtnNo) end)
+        activeNoConn = motion:Connect(BtnNo, BtnNo.MouseButton1Click, function()
+            DisconnectConfirm()
+            Ripple(BtnNo)
             toggleConfirmUI(false)
             if noCallback then noCallback() end
         end)
@@ -592,10 +1007,9 @@ function library.new(library, name, theme)
         toggleConfirmUI(true)
     end
 
-    CloseBtn.MouseButton1Click:Connect(function()
+    motion:Connect(CloseBtn, CloseBtn.MouseButton1Click, function()
         ShowConfirm("确认关闭UI界面吗？", function()
-            task.wait(0.2)
-            UiDestroy()
+            motion:Spawn(dogent, UiDestroy, 0.2)
         end)
     end)
 
@@ -626,18 +1040,12 @@ function library.new(library, name, theme)
     MainStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 
     local MainStrokeGradient = Instance.new("UIGradient")
-    MainStrokeGradient.Color = Palettes[UI_CONFIG.Palette] or Palettes["赛博朋克 2.0 (霓虹)"]
+    MainStrokeGradient.Color = Palettes[setting("Palette")] or Palettes["赛博朋克 2.0 (霓虹)"]
     MainStrokeGradient.Rotation = 45
     MainStrokeGradient.Parent = MainStroke
     
-    local marqueeConn = RunService.RenderStepped:Connect(function()
-        if UI_CONFIG.MarqueeEnabled then
-            local rot = (os.clock() * UI_CONFIG.MarqueeSpeed * 60) % 360
-            MainStrokeGradient.Rotation = rot
-        else
-            MainStrokeGradient.Rotation = 45
-        end
-    end)
+    motion.Gradient = MainStrokeGradient
+    motion.Shadow = DropShadow
 
     local function toggleui()
         if not _G.activeUITweens then _G.activeUITweens = {} end
@@ -722,6 +1130,36 @@ function library.new(library, name, theme)
     ScriptTitle.TextSize = 13.000
     ScriptTitle.TextXAlignment = Enum.TextXAlignment.Left
     ScriptTitle:SetAttribute("BaseTextSize", 13)
+    local function ClampLayout()
+        local viewport = WindowLayout.AbsoluteSize
+        if viewport.X <= 0 or viewport.Y <= 0 or motion.WindowScaleTween or motion.AdjustingLayout then return end
+        local scale = uiScale.Scale > 0 and uiScale.Scale or UI_CONFIG.Scale
+        motion.DesiredWidth = motion.DesiredWidth or CloudMain.Size.X.Offset
+        motion.DesiredHeight = motion.DesiredHeight or CloudMain.Size.Y.Offset
+        local fitWidth = math.min(motion.DesiredWidth, math.max(400, math.floor((viewport.X - 8) / scale)))
+        local fitHeight = math.min(motion.DesiredHeight, math.max(250, math.floor((viewport.Y - 8) / scale)))
+        motion.AdjustingLayout = true
+        assign(CloudMain, "Size", UDim2.new(0, fitWidth, 0, fitHeight))
+        motion.AdjustingLayout = false
+        local width, height = fitWidth * scale, fitHeight * scale
+        local baseX, baseY = viewport.X * 0.5 - width * 0.5, viewport.Y * 0.4 - height * 0.5
+        local position = WindowLayout.Position
+        local minX, maxX = -baseX, viewport.X - width - baseX
+        local minY, maxY = -baseY, viewport.Y - height - baseY
+        if width > viewport.X then minX, maxX = viewport.X - width - baseX, viewport.X - width - baseX end
+        if height > viewport.Y then minY, maxY = viewport.Y - height - baseY, viewport.Y - height - baseY end
+        assign(WindowLayout, "Position", UDim2.new(0, math.clamp(position.X.Offset, minX, maxX), 0, math.clamp(position.Y.Offset, minY, maxY)))
+    end
+    motion.ClampLayout = ClampLayout
+    motion:Connect(WindowLayout, WindowLayout:GetPropertyChangedSignal("AbsoluteSize"), ClampLayout)
+    motion:Connect(CloudMain, CloudMain:GetPropertyChangedSignal("Size"), ClampLayout)
+    motion:Connect(uiScale, uiScale:GetPropertyChangedSignal("Scale"), ClampLayout)
+    ClampLayout()
+    motion:Spawn(WindowLayout, ClampLayout)
+    drag(WindowLayout, CloudMain)
+    drag(WindowLayout, ScriptTitle)
+    drag(WindowLayout, Side)
+    drag(WindowLayout, SB)
 
     local UIGradientTitle = Instance.new("UIGradient")
     UIGradientTitle.Color = ColorSequence.new{
@@ -795,17 +1233,18 @@ function library.new(library, name, theme)
     CrownIcon.Visible = false
     CrownIcon.ZIndex = 5
 
-    task.spawn(function()
+    motion:Spawn(AvatarImage, function()
         local success, content = pcall(function()
             return Players:GetUserThumbnailAsync(LocalPlayer.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420)
         end)
-        if success and content then
+        if motion.Alive and AvatarImage.Parent and success and content then
             AvatarImage.Image = content
         end
     end)
 
-    task.spawn(function()
+    motion:Spawn(AvatarImage, function()
         for i = 1, 30 do
+            if not motion.Alive or not AvatarImage.Parent then break end
             if getgenv().IsVIP and getgenv().IsVIP(LocalPlayer) then
                 AvatarStroke.Transparency = 0
                 CrownIcon.Visible = true
@@ -828,36 +1267,9 @@ function library.new(library, name, theme)
     StatsText.TextYAlignment = Enum.TextYAlignment.Center
     StatsText:SetAttribute("BaseTextSize", 10)
 
-    task.spawn(function()
-        local lastTime = os.clock()
-        local frames = 0
-        
-        local rsConn = RunService.RenderStepped:Connect(function()
-            frames = frames + 1
-        end)
-
-        while task.wait(1) do
-            if not StatsText or not StatsText.Parent then
-                rsConn:Disconnect()
-                break
-            end
-
-            local currentTime = os.clock()
-            local dt = currentTime - lastTime
-            local fps = math.floor(frames / dt)
-            frames = 0
-            lastTime = currentTime
-            
-            local ping = "0"
-            pcall(function()
-                local pingVal = game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue()
-                ping = tostring(math.floor(pingVal))
-            end)
-            
-            local timeStr = os.date("%H:%M:%S")
-            StatsText.Text = string.format("FPS: %d\nPing: %sms\n时间: %s", fps, ping, timeStr)
-        end
-    end)
+    motion.Stats = StatsText
+    motion:Connect(CloudMain, CloudMain:GetPropertyChangedSignal("Visible"), function() motion:SyncVisibility() end)
+    motion:Connect(StatsText, StatsText:GetPropertyChangedSignal("Visible"), function() motion:SyncVisibility() end)
 
     SBG.Color = ColorSequence.new {ColorSequenceKeypoint.new(0.00, zyColor), ColorSequenceKeypoint.new(1.00, zyColor)}
     SBG.Rotation = 90
@@ -874,7 +1286,8 @@ function library.new(library, name, theme)
     Open.TextColor3 = Color3.fromRGB(30, 30, 30)
     Open.TextSize = 14.000
     Open.Active = true
-    Open.Draggable = true
+    Open.Draggable = false
+    drag(Open)
     Open:SetAttribute("BaseTextSize", 14)
 
     local OpenCorner = Instance.new("UICorner")
@@ -893,80 +1306,12 @@ function library.new(library, name, theme)
     OpenStrokeGradient.Rotation = 45
     OpenStrokeGradient.Parent = OpenStroke
 
-    Open.MouseButton1Click:Connect(function() toggleui() end)
+    motion:Connect(Open, Open.MouseButton1Click, function() toggleui() end)
 
-    RefreshGlobalUI = function()
-        local selectedFont = FontTypes[UI_CONFIG.FontMode] or Enum.Font.GothamBold
-        local selectedColor = FontColorPresets[UI_CONFIG.FontColorMode] or Color3.fromRGB(255, 255, 255)
-        local sizeOffset = UI_CONFIG.FontSizeOffset or 0
-        
-        local hasBackground = CustomBG and CustomBG.Visible and CustomBG.Image ~= ""
-        
-        local strokeAlpha = 1
-        local titleStrokeAlpha = 1
-        local strokeColor = Color3.fromRGB(0, 0, 0)
-        
-        if hasBackground then
-            strokeAlpha = 0.25
-            titleStrokeAlpha = 0.5
-        end
+    RefreshGlobalUI = function() motion:RefreshTheme() end
 
-        for _, obj in ipairs(dogent:GetDescendants()) do
-            if obj:GetAttribute("IsControlBG") then
-                obj.BackgroundTransparency = interfaceTransparency
-            end
-            
-            if obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
-                if not obj:GetAttribute("BaseTextSize") then
-                    obj:SetAttribute("BaseTextSize", obj.TextSize)
-                end
-                
-                if obj.Name == "Open" or obj.Name == "ScriptTitle" then
-                    obj.TextColor3 = Color3.fromRGB(30, 30, 30)
-                    obj.Font = selectedFont
-                    obj.TextSize = obj:GetAttribute("BaseTextSize") + sizeOffset
-                    obj.TextStrokeTransparency = titleStrokeAlpha
-                    obj.TextStrokeColor3 = Color3.fromRGB(255, 255, 255)
-                elseif obj.Name ~= "Icon" and obj.Name ~= "Avatar" and obj.Name ~= "Crown" and obj.Name ~= "StatsText" then
-                    obj.Font = selectedFont
-                    obj.TextColor3 = selectedColor
-                    if obj:IsA("TextBox") then
-                        obj.PlaceholderColor3 = selectedColor
-                    end
-                    obj.TextSize = obj:GetAttribute("BaseTextSize") + sizeOffset
-                    obj.TextStrokeTransparency = strokeAlpha
-                    obj.TextStrokeColor3 = strokeColor
-                elseif obj.Name == "StatsText" then
-                    obj.TextColor3 = selectedColor
-                    obj.TextSize = obj:GetAttribute("BaseTextSize") + sizeOffset
-                    obj.TextStrokeTransparency = strokeAlpha
-                    obj.TextStrokeColor3 = strokeColor
-                end
-                
-                if obj.Name == "TopLine" then
-                    if obj:IsA("Frame") then
-                        obj.BackgroundColor3 = selectedColor
-                    end
-                end
-            end
-        end
-
-        if UI_CONFIG.GlowEnabled then
-            local gColor = FontColorPresets[UI_CONFIG.GlowColor] or Color3.fromRGB(0,255,255)
-            DropShadow.ImageColor3 = gColor
-            local intensity = UI_CONFIG.GlowIntensity or 50
-            local glowAlpha = math.clamp(1 - (intensity / 100), 0, 1)
-            DropShadow.ImageTransparency = glowAlpha
-            local shadowScale = 43 + (intensity * 0.3)
-            DropShadow.Size = UDim2.new(1, shadowScale, 1, shadowScale)
-        else
-            DropShadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
-            DropShadow.ImageTransparency = 0.7
-            DropShadow.Size = UDim2.new(1, 43, 1, 43)
-        end
-    end
-
-    local window = {}
+    window = {}
+    function window:Destroy() motion:Destroy(); dogent:Destroy() end
     function window.Tab(window, tabName, icon)
         local Tab = Instance.new("ScrollingFrame")
         local TabIco = Instance.new("Frame")
@@ -982,7 +1327,7 @@ function library.new(library, name, theme)
         Tab.BackgroundTransparency = 1.000
         Tab.Size = UDim2.new(1, 0, 1, 0)
         Tab.ScrollBarThickness = 0
-        Tab.Visible = true
+        Tab.Visible = false
         Tab.Position = UDim2.new(0, 0, 1.2, 0)
         Tab.CanvasSize = UDim2.new(0, 0, 0, 0)
         Tab.AutomaticCanvasSize = Enum.AutomaticSize.Y
@@ -1037,15 +1382,16 @@ function library.new(library, name, theme)
         TabL.Padding = UDim.new(0, 8)
 
         local tabData = {TabIco, Tab}
+        table.insert(motion.Tabs, tabData)
 
-        TabBtn.MouseButton1Click:Connect(function()
-            spawn(function() Ripple(TabBtn) end)
+        motion:Connect(TabBtn, TabBtn.MouseButton1Click, function()
+            Ripple(TabBtn)
             switchTab(tabData)
         end)
 
         if library.currentTab == nil then switchTab(tabData) end
 
-        local tab = {}
+        local tab = {_UIData = tabData}
         function tab.section(tab, secName, TabVal)
             local Section = Instance.new("Frame")
             local SectionC = Instance.new("UICorner")
@@ -1131,16 +1477,24 @@ function library.new(library, name, theme)
                 SetOpen = function(state)
                     open = state
                     Objs.Visible = open
-                    TS:Create(SectionOpened, TweenInfo.new(0.2), {TextTransparency = (open and 0 or 1)}):Play()
-                    TS:Create(SectionOpen, TweenInfo.new(0.2), {TextTransparency = (open and 1 or 0)}):Play()
+                    motion:Create(SectionOpened, TweenInfo.new(0.2), {TextTransparency = (open and 0 or 1)}):Play()
+                    motion:Create(SectionOpen, TweenInfo.new(0.2), {TextTransparency = (open and 1 or 0)}):Play()
                 end
             }
 
-            SectionToggle.MouseButton1Click:Connect(function()
+            motion:Connect(SectionToggle, SectionToggle.MouseButton1Click, function()
                 sectionData.SetOpen(not open)
             end)
 
-            local section = {}
+            local sectionInfo = {Frame = Section, Objects = Objs, Title = string.lower(tostring(secName)), Tab = tabData, Open = Objs.Visible}
+            motion.Sections[Section] = sectionInfo
+            local originalSetOpen = sectionData.SetOpen
+            sectionData.SetOpen = function(state)
+                sectionInfo.Open = state
+                originalSetOpen(state)
+                if not state then motion:StopVisuals(Objs) end
+            end
+            local section = {SetOpen = function(_, state) sectionData.SetOpen(state) end}
             function section.Button(section, text, callback)
                 local callback = callback or function() end
 
@@ -1149,6 +1503,7 @@ function library.new(library, name, theme)
                 local BtnC = Instance.new("UICorner")
 
                 BtnModule.Name = "BtnModule"
+                motion:AddControl(BtnModule, text, sectionInfo)
                 BtnModule.Parent = Objs
                 BtnModule.BackgroundTransparency = 1.000
                 BtnModule.Size = UDim2.new(1, -4, 0, 30)
@@ -1167,6 +1522,7 @@ function library.new(library, name, theme)
                 Btn.TextTransparency = NameTransparency
                 Btn:SetAttribute("BaseTextSize", 13)
                 Btn:SetAttribute("IsControlBG", true)
+                motion:BindFeedback(Btn)
 
                 BtnC.CornerRadius = UDim.new(0, 6)
                 BtnC.Parent = Btn
@@ -1178,9 +1534,9 @@ function library.new(library, name, theme)
                 BtnStroke.Thickness = 1
                 BtnStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 
-                Btn.MouseButton1Click:Connect(function()
-                    spawn(function() Ripple(Btn) end)
-                    spawn(callback)
+                motion:Connect(Btn, Btn.MouseButton1Click, function()
+                    Ripple(Btn)
+                    task.spawn(callback)
                 end)
                 RefreshGlobalUI()
             end
@@ -1191,6 +1547,7 @@ function library.new(library, name, theme)
                 local LabelC = Instance.new("UICorner")
 
                 LabelModule.Name = "LabelModule"
+                motion:AddControl(LabelModule, text, sectionInfo)
                 LabelModule.Parent = Objs
                 LabelModule.BackgroundTransparency = 1.000
                 LabelModule.Size = UDim2.new(1, -4, 0, 20)
@@ -1217,7 +1574,8 @@ function library.new(library, name, theme)
             function section.Toggle(section, text, flag, enabled, callback)
                 local callback = callback or function() end
                 local enabled = enabled or false
-                library.flags[flag] = enabled
+                local currentState = false
+                if flag ~= nil then library.flags[flag] = false end
 
                 local ToggleModule = Instance.new("Frame")
                 local ToggleBtn = Instance.new("TextButton")
@@ -1228,6 +1586,7 @@ function library.new(library, name, theme)
                 local ToggleDisableC = Instance.new("UICorner")
 
                 ToggleModule.Name = "ToggleModule"
+                motion:AddControl(ToggleModule, text, sectionInfo)
                 ToggleModule.Parent = Objs
                 ToggleModule.BackgroundTransparency = 1.000
                 ToggleModule.Size = UDim2.new(1, -4, 0, 30)
@@ -1245,6 +1604,7 @@ function library.new(library, name, theme)
                 ToggleBtn.BackgroundTransparency = interfaceTransparency
                 ToggleBtn:SetAttribute("BaseTextSize", 13)
                 ToggleBtn:SetAttribute("IsControlBG", true)
+                motion:BindFeedback(ToggleBtn)
 
                 ToggleBtnC.CornerRadius = UDim.new(0, 6)
                 ToggleBtnC.Parent = ToggleBtn
@@ -1278,19 +1638,22 @@ function library.new(library, name, theme)
 
                 local funcs = {
                     SetState = function(self, state)
-                        if state == nil then state = not library.flags[flag] end
-                        if library.flags[flag] == state then return end
-                        
-                        TS:Create(ToggleSwitch, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Position = UDim2.new(0, (state and 18 or 2), 0.5, 0)}):Play()
-                        TS:Create(ToggleDisable, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {BackgroundColor3 = (state and Color3.fromRGB(0, 122, 255) or beijingColor)}):Play()
-                        
-                        library.flags[flag] = state
+                        if state == nil then state = not currentState end
+                        state = not not state
+                        if currentState == state then return end
+                        currentState = state
+                        ToggleBtn:SetAttribute("UIState", state)
+                        ToggleDisable:SetAttribute("UIState", state)
+                        local theme = motion:GetTheme()
+                        motion:Create(ToggleSwitch, TweenInfo.new(0.18, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Position = UDim2.new(0, state and 18 or 2, 0.5, 0)}):Play()
+                        motion:Create(ToggleDisable, TweenInfo.new(0.18, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {BackgroundColor3 = state and theme.Accent or theme.Raised}):Play()
+                        motion:FeedbackState(ToggleBtn, motion.Feedback[ToggleBtn] or {})
+                        if flag ~= nil then library.flags[flag] = state end
                         callback(state)
                     end
                 }
-
-                if enabled ~= false then funcs:SetState(flag, true) end
-                ToggleBtn.MouseButton1Click:Connect(function() funcs:SetState() end)
+                if enabled ~= false then funcs:SetState(enabled) end
+                motion:Connect(ToggleBtn, ToggleBtn.MouseButton1Click, function() funcs:SetState() end)
                 RefreshGlobalUI()
                 return funcs
             end
@@ -1311,6 +1674,7 @@ function library.new(library, name, theme)
                 local KeybindValueC = Instance.new("UICorner")
 
                 KeybindModule.Name = "KeybindModule"
+                motion:AddControl(KeybindModule, text, sectionInfo)
                 KeybindModule.Parent = Objs
                 KeybindModule.BackgroundTransparency = 1.000
                 KeybindModule.Size = UDim2.new(1, -4, 0, 30)
@@ -1328,6 +1692,7 @@ function library.new(library, name, theme)
                 KeybindBtn.BackgroundTransparency = interfaceTransparency
                 KeybindBtn:SetAttribute("BaseTextSize", 13)
                 KeybindBtn:SetAttribute("IsControlBG", true)
+                motion:BindFeedback(KeybindBtn)
 
                 KeybindBtnC.CornerRadius = UDim.new(0, 6)
                 KeybindBtnC.Parent = KeybindBtn
@@ -1355,26 +1720,26 @@ function library.new(library, name, theme)
                 KeybindValueC.CornerRadius = UDim.new(0, 6)
                 KeybindValueC.Parent = KeybindValue
 
-                services.UserInputService.InputBegan:Connect(function(inp, gpe)
-                    if gpe or inp.UserInputType ~= Enum.UserInputType.Keyboard or inp.KeyCode ~= bindKey then return end
-                    callback(bindKey.Name)
-                end)
-
-                KeybindValue.MouseButton1Click:Connect(function()
-                    KeybindValue.Text = "..."
-                    wait()
-                    local key = services.UserInputService.InputEnded:Wait()
-                    local keyName = tostring(key.KeyCode.Name)
-                    if key.UserInputType ~= Enum.UserInputType.Keyboard or banned[keyName] then
+                local listening = false
+                motion:BindKey(KeybindValue, function(inp, capturing)
+                    if capturing then
+                        listening = false
+                        motion.KeyCapture = nil
+                        local keyName = inp.KeyCode.Name
+                        if not banned[keyName] then bindKey = inp.KeyCode; keyTxt = shortNames[keyName] or keyName end
                         KeybindValue.Text = keyTxt
-                        return
-                    end
-                    wait()
-                    bindKey = Enum.KeyCode[keyName]
-                    KeybindValue.Text = shortNames[keyName] or keyName
+                    elseif inp.KeyCode == bindKey then return callback, bindKey.Name end
+                end)
+                motion:Connect(KeybindValue, KeybindValue.MouseButton1Click, function()
+                    motion:SetKeyCapture(KeybindValue, function()
+                        listening = false
+                        if KeybindValue.Parent then KeybindValue.Text = keyTxt end
+                    end)
+                    listening = true
+                    KeybindValue.Text = "…"
                 end)
 
-                KeybindValue:GetPropertyChangedSignal("TextBounds"):Connect(function()
+                motion:Connect(KeybindValue, KeybindValue:GetPropertyChangedSignal("TextBounds"), function()
                     KeybindValue.Size = UDim2.new(0, KeybindValue.TextBounds.X + 20, 0, 22)
                 end)
                 KeybindValue.Size = UDim2.new(0, KeybindValue.TextBounds.X + 20, 0, 22)
@@ -1384,7 +1749,7 @@ function library.new(library, name, theme)
 
             function section.Textbox(section, text, flag, default, callback)
                 local callback = callback or function() end
-                library.flags[flag] = default
+                if flag ~= nil then library.flags[flag] = default end
 
                 local TextboxModule = Instance.new("Frame")
                 local TextboxBack = Instance.new("TextButton")
@@ -1394,6 +1759,7 @@ function library.new(library, name, theme)
                 local TextBox = Instance.new("TextBox")
 
                 TextboxModule.Name = "TextboxModule"
+                motion:AddControl(TextboxModule, text, sectionInfo)
                 TextboxModule.Parent = Objs
                 TextboxModule.BackgroundTransparency = 1.000
                 TextboxModule.Size = UDim2.new(1, -4, 0, 30)
@@ -1411,6 +1777,7 @@ function library.new(library, name, theme)
                 TextboxBack.BackgroundTransparency = interfaceTransparency
                 TextboxBack:SetAttribute("BaseTextSize", 13)
                 TextboxBack:SetAttribute("IsControlBG", true)
+                motion:BindFeedback(TextboxBack)
 
                 TextboxBackC.CornerRadius = UDim.new(0, 6)
                 TextboxBackC.Parent = TextboxBack
@@ -1446,23 +1813,24 @@ function library.new(library, name, theme)
                 TextBox.BackgroundTransparency = 1.000
                 TextBox.Size = UDim2.new(1, 0, 1, 0)
                 TextBox.Font = Enum.Font.GothamBold
-                TextBox.Text = default
+                TextBox.Text = tostring(default or "")
+                TextBox.ClearTextOnFocus = false
                 TextBox.TextColor3 = TextColor
                 TextBox.TextSize = 12.000
                 TextBox:SetAttribute("BaseTextSize", 12)
 
-                TextBox.Focused:Connect(function()
-                    TS:Create(BoxStroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(0, 122, 255), Transparency = 0}):Play()
+                motion:Connect(TextBox, TextBox.Focused, function()
+                    motion:Create(BoxStroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(0, 122, 255), Transparency = 0}):Play()
                 end)
 
-                TextBox.FocusLost:Connect(function()
+                motion:Connect(TextBox, TextBox.FocusLost, function()
                     if TextBox.Text == "" then TextBox.Text = default end
-                    library.flags[flag] = TextBox.Text
+                    if flag ~= nil then library.flags[flag] = TextBox.Text end
                     callback(TextBox.Text)
-                    TS:Create(BoxStroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(180, 180, 180), Transparency = 0}):Play()
+                    motion:Create(BoxStroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(180, 180, 180), Transparency = 0}):Play()
                 end)
 
-                TextBox:GetPropertyChangedSignal("TextBounds"):Connect(function()
+                motion:Connect(TextBox, TextBox:GetPropertyChangedSignal("TextBounds"), function()
                     BoxBG.Size = UDim2.new(0, TextBox.TextBounds.X + 20, 0, 22)
                 end)
                 BoxBG.Size = UDim2.new(0, TextBox.TextBounds.X + 20, 0, 22)
@@ -1473,7 +1841,11 @@ function library.new(library, name, theme)
             function section.Slider(section, text, flag, default, min, max, precise, callback, onReleased)
                 local callback = callback or function() end
                 local min, max, default = min or 1, max or 10, default or min
-                library.flags[flag] = default
+                if not finite(min) then min = 1 end
+                if not finite(max) then max = 10 end
+                if max < min then min, max = max, min end
+                if not finite(default) then default = min end
+                if flag ~= nil then library.flags[flag] = default end
 
                 local SliderModule = Instance.new("Frame")
                 local SliderBack = Instance.new("TextButton")
@@ -1489,6 +1861,7 @@ function library.new(library, name, theme)
                 local AddSlider = Instance.new("TextButton")
 
                 SliderModule.Name = "SliderModule"
+                motion:AddControl(SliderModule, text, sectionInfo)
                 SliderModule.Parent = Objs
                 SliderModule.BackgroundTransparency = 1.000
                 SliderModule.Size = UDim2.new(1, -4, 0, 36)
@@ -1506,6 +1879,7 @@ function library.new(library, name, theme)
                 SliderBack.BackgroundTransparency = interfaceTransparency
                 SliderBack:SetAttribute("BaseTextSize", 13)
                 SliderBack:SetAttribute("IsControlBG", true)
+                motion:BindFeedback(SliderBack)
 
                 SliderBackC.CornerRadius = UDim.new(0, 6)
                 SliderBackC.Parent = SliderBack
@@ -1538,6 +1912,7 @@ function library.new(library, name, theme)
                 SliderValue.TextColor3 = TextColor
                 SliderValue.TextSize = 12.000
                 SliderValue:SetAttribute("BaseTextSize", 12)
+                SliderValue.ClearTextOnFocus = false
 
                 AddSlider.Parent = SliderBack
                 AddSlider.AnchorPoint = Vector2.new(1, 0.5)
@@ -1550,6 +1925,7 @@ function library.new(library, name, theme)
                 AddSlider.TextSize = 20.000
                 AddSlider:SetAttribute("BaseTextSize", 20)
 
+                SliderBar.Name = "SliderTrack"
                 SliderBar.Parent = SliderBack
                 SliderBar.AnchorPoint = Vector2.new(1, 0.5)
                 SliderBar.Position = UDim2.new(1, -75, 0.5, 0)
@@ -1559,6 +1935,7 @@ function library.new(library, name, theme)
                 SliderBarC.CornerRadius = UDim.new(1, 0)
                 SliderBarC.Parent = SliderBar
 
+                SliderPart.Name = "SliderFill"
                 SliderPart.Parent = SliderBar
                 SliderPart.BackgroundColor3 = Color3.fromRGB(0, 122, 255)
                 SliderPart.Size = UDim2.new(0, 50, 1, 0)
@@ -1577,84 +1954,84 @@ function library.new(library, name, theme)
                 MinSlider.TextSize = 20.000
                 MinSlider:SetAttribute("BaseTextSize", 20)
 
+                local boxFocused, updatingText = false, false
+                local currentValue = default
+                local rangeSize = max - min
+                local function displayValue(value) return string.format("%.8g", value) end
+                local function writeValue(value)
+                    updatingText = true
+                    SliderValue.Text = displayValue(value)
+                    updatingText = false
+                end
                 local funcs = {
-                    SetValue = function(self, value)
-                        local percent = (mouse.X - SliderBar.AbsolutePosition.X) / SliderBar.AbsoluteSize.X
-                        if value then percent = (value - min) / (max - min) end
-                        percent = math.clamp(percent, 0, 1)
-                        if precise then
-                            value = value or tonumber(string.format("%.1f", tostring(min + (max - min) * percent)))
-                        else
-                            value = value or math.floor(min + (max - min) * percent)
+                    SetValue = function(self, value, pointerX, keepText)
+                        local fromPointer = value == nil
+                        local percent
+                        if fromPointer then
+                            percent = math.clamp(((pointerX or mouse.X) - SliderBar.AbsolutePosition.X) / math.max(1, SliderBar.AbsoluteSize.X), 0, 1)
+                            value = min + rangeSize * percent
+                            value = precise and tonumber(string.format("%.1f", value)) or math.floor(value)
                         end
-                        library.flags[flag] = tonumber(value)
-                        SliderValue.Text = tostring(value)
-                        SliderPart.Size = UDim2.new(percent, 0, 1, 0)
-                        callback(tonumber(value))
+                        if not finite(value) then return end
+                        value = math.clamp(value, min, max)
+                        percent = rangeSize == 0 and 0 or (value - min) / rangeSize
+                        if fromPointer and currentValue == value then return end
+                        currentValue = value
+                        if flag ~= nil then library.flags[flag] = value end
+                        if not keepText then writeValue(value) end
+                        assign(SliderPart, "Size", UDim2.new(percent, 0, 1, 0))
+                        callback(value)
                     end
                 }
 
-                MinSlider.MouseButton1Click:Connect(function() 
-                    funcs:SetValue(math.clamp(library.flags[flag] - 1, min, max))
-                    if onReleased then onReleased(library.flags[flag]) end
+                motion:Connect(MinSlider, MinSlider.MouseButton1Click, function() 
+                    funcs:SetValue(math.clamp(currentValue - 1, min, max))
+                    if onReleased then onReleased(currentValue) end
                 end)
-                AddSlider.MouseButton1Click:Connect(function() 
-                    funcs:SetValue(math.clamp(library.flags[flag] + 1, min, max))
-                    if onReleased then onReleased(library.flags[flag]) end
+                motion:Connect(AddSlider, AddSlider.MouseButton1Click, function() 
+                    funcs:SetValue(math.clamp(currentValue + 1, min, max))
+                    if onReleased then onReleased(currentValue) end
                 end)
 
                 funcs:SetValue(default)
-                local dragging, boxFocused, allowed = false, false, { [""] = true, ["-"] = true }
-
-                SliderBar.InputBegan:Connect(function(input)
-                    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                        funcs:SetValue()
-                        dragging = true
-                    end
+                local SliderHit = Instance.new("Frame")
+                SliderHit.Name = "SliderHit"
+                SliderHit.BackgroundTransparency = 1
+                SliderHit.AnchorPoint = Vector2.new(1, 0.5)
+                SliderHit.Position = SliderBar.Position
+                SliderHit.Size = UDim2.new(0, 100, 0, 28)
+                SliderHit.Active = true
+                SliderHit.ZIndex = SliderBack.ZIndex + 2
+                SliderHit.Parent = SliderBack
+                motion:Connect(SliderHit, SliderHit.InputBegan, function(input)
+                    if input.UserInputType ~= Enum.UserInputType.MouseButton1 and input.UserInputType ~= Enum.UserInputType.Touch then return end
+                    local scrolled = Tab.ScrollingEnabled
+                    Tab.ScrollingEnabled = false
+                    funcs:SetValue(nil, input.Position.X)
+                    motion:BeginPointer(SliderHit, input, function(changed) funcs:SetValue(nil, changed.Position.X) end, function(released)
+                        if Tab.Parent then Tab.ScrollingEnabled = scrolled end
+                        if released and onReleased then onReleased(currentValue) end
+                    end)
                 end)
-
-                services.UserInputService.InputEnded:Connect(function(input)
-                    if dragging and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
-                        dragging = false
-                        if onReleased then onReleased(library.flags[flag]) end
-                    end
-                end)
-
-                services.UserInputService.InputChanged:Connect(function(input)
-                    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-                        funcs:SetValue()
-                    end
-                end)
-
-                SliderValue.Focused:Connect(function() boxFocused = true end)
-                SliderValue.FocusLost:Connect(function()
+                motion:Connect(SliderValue, SliderValue.Focused, function() boxFocused = true end)
+                motion:Connect(SliderValue, SliderValue.FocusLost, function()
                     boxFocused = false
-                    if SliderValue.Text == "" then funcs:SetValue(default) end
-                    if onReleased then onReleased(library.flags[flag]) end
+                    if SliderValue.Text == "" then funcs:SetValue(default) else writeValue(currentValue) end
+                    if onReleased then onReleased(currentValue) end
+                end)
+                motion:Connect(SliderValue, SliderValue:GetPropertyChangedSignal("Text"), function()
+                    if not boxFocused or updatingText then return end
+                    local value = tonumber(SliderValue.Text)
+                    if finite(value) then funcs:SetValue(value, nil, true) end
                 end)
 
-                SliderValue:GetPropertyChangedSignal("Text"):Connect(function()
-                    if not boxFocused then return end
-                    SliderValue.Text = SliderValue.Text:gsub("%D+", "")
-                    local text = SliderValue.Text
-                    if not tonumber(text) then
-                        SliderValue.Text = SliderValue.Text:gsub("%D+", "")
-                    elseif not allowed[text] then
-                        if tonumber(text) > max then
-                            text = max
-                            SliderValue.Text = tostring(max)
-                        end
-                        funcs:SetValue(tonumber(text))
-                    end
-                end)
-                
                 RefreshGlobalUI()
                 return funcs
             end
 
             function section.Dropdown(section, text, flag, options, callback)
                 local callback = callback or function() end
-                library.flags[flag] = nil
+                if flag ~= nil then library.flags[flag] = nil end
 
                 local DropdownModule = Instance.new("Frame")
                 local DropdownTop = Instance.new("TextButton")
@@ -1664,6 +2041,7 @@ function library.new(library, name, theme)
                 local DropdownModuleL = Instance.new("UIListLayout")
 
                 DropdownModule.Name = "DropdownModule"
+                motion:AddControl(DropdownModule, text, sectionInfo)
                 DropdownModule.Parent = Objs
                 DropdownModule.BackgroundTransparency = 1.000
                 DropdownModule.ClipsDescendants = true
@@ -1678,6 +2056,7 @@ function library.new(library, name, theme)
                 DropdownTop.Text = ""
                 DropdownTop.BackgroundTransparency = interfaceTransparency
                 DropdownTop:SetAttribute("IsControlBG", true)
+                motion:BindFeedback(DropdownTop)
 
                 DropdownTopC.CornerRadius = UDim.new(0, 6)
                 DropdownTopC.Parent = DropdownTop
@@ -1717,31 +2096,47 @@ function library.new(library, name, theme)
                 DropdownModuleL.SortOrder = Enum.SortOrder.LayoutOrder
                 DropdownModuleL.Padding = UDim.new(0, 6)
 
-                local function setAllVisible()
-                    for _, option in ipairs(DropdownModule:GetChildren()) do
-                        if option:IsA("TextButton") and option.Name:match("Option_") then
-                            option.Visible = true
+                local OptionList = Instance.new("ScrollingFrame")
+                OptionList.Name = "OptionList"
+                OptionList.BackgroundTransparency = 1
+                OptionList.BorderSizePixel = 0
+                OptionList.Size = UDim2.new(1, 0, 0, 0)
+                OptionList.AutomaticCanvasSize = Enum.AutomaticSize.Y
+                OptionList.CanvasSize = UDim2.new()
+                OptionList.ScrollBarThickness = 3
+                OptionList.ClipsDescendants = true
+                OptionList.Visible = false
+                OptionList.Parent = DropdownModule
+                local optionLayout = Instance.new("UIListLayout", OptionList)
+                optionLayout.Padding = UDim.new(0, 6)
+                optionLayout.SortOrder = Enum.SortOrder.LayoutOrder
+                local open, focused = false, false
+                local function ResizeOptions()
+                    local count = 0
+                    local query = focused and string.lower(DropdownText.Text) or ""
+                    for _, option in ipairs(OptionList:GetChildren()) do
+                        if option:IsA("TextButton") then
+                            option.Visible = query == "" or string.find(string.lower(option.Text), query, 1, true) ~= nil
+                            if option.Visible then count = count + 1 end
                         end
                     end
+                    if open then OptionList.Visible = true end
+                    local tween = motion:Create(OptionList, TweenInfo.new(0.18, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Size = UDim2.new(1, 0, 0, open and math.min(192, count * 32) or 0)})
+                    tween.Completed:Once(function(state) if state == Enum.PlaybackState.Completed and not open then OptionList.Visible = false end end)
+                    tween:Play()
                 end
-
-                local open = false
                 local function ToggleDropVis()
                     open = not open
-                    if open then 
-                        setAllVisible() 
-                    else
-                        for _, option in ipairs(DropdownModule:GetChildren()) do
-                            if option:IsA("TextButton") and option.Name:match("Option_") then
-                                option.Visible = false
-                            end
-                        end
-                    end
-                    DropdownOpen.Text = (open and "-" or "+")
+                    DropdownOpen.Text = open and "−" or "+"
+                    motion:Create(DropdownOpen, TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Rotation = open and 90 or 0}):Play()
+                    ResizeOptions()
                 end
-
-                DropdownOpen.MouseButton1Click:Connect(ToggleDropVis)
-                DropdownText.Focused:Connect(function() if not open then ToggleDropVis() end end)
+                motion:Connect(DropdownOpen, DropdownOpen.MouseButton1Click, ToggleDropVis)
+                motion:Connect(DropdownTop, DropdownTop.MouseButton1Click, ToggleDropVis)
+                DropdownText.ClearTextOnFocus = false
+                motion:Connect(DropdownText, DropdownText.Focused, function() focused = true; if not open then ToggleDropVis() else ResizeOptions() end end)
+                motion:Connect(DropdownText, DropdownText.FocusLost, function() focused = false; ResizeOptions() end)
+                motion:Connect(DropdownText, DropdownText:GetPropertyChangedSignal("Text"), function() if focused then ResizeOptions() end end)
 
                 local funcs = {}
                 funcs.AddOption = function(self, option)
@@ -1749,7 +2144,7 @@ function library.new(library, name, theme)
                     local OptionC = Instance.new("UICorner")
 
                     Option.Name = "Option_" .. option
-                    Option.Parent = DropdownModule
+                    Option.Parent = OptionList
                     Option.BackgroundColor3 = zyColor
                     Option.Size = UDim2.new(1, 0, 0, 26)
                     Option.AutoButtonColor = false
@@ -1757,7 +2152,7 @@ function library.new(library, name, theme)
                     Option.Text = option
                     Option.TextColor3 = TextColor
                     Option.TextSize = 12.000
-                    Option.Visible = open
+                    Option.Visible = true
                     Option.BackgroundTransparency = interfaceTransparency
                     Option:SetAttribute("BaseTextSize", 12)
                     Option:SetAttribute("IsControlBG", true)
@@ -1765,23 +2160,36 @@ function library.new(library, name, theme)
                     OptionC.CornerRadius = UDim.new(0, 6)
                     OptionC.Parent = Option
 
-                    Option.MouseButton1Click:Connect(function()
+                    motion:Connect(Option, Option.MouseButton1Click, function()
                         ToggleDropVis()
                         callback(Option.Text)
                         DropdownText.Text = Option.Text
-                        library.flags[flag] = Option.Text
+                        if flag ~= nil then library.flags[flag] = Option.Text end
                     end)
+                    motion:BindFeedback(Option)
+                    if open then ResizeOptions() end
                     RefreshGlobalUI()
                 end
 
                 funcs.SetOptions = function(self, options)
-                    for _, v in next, DropdownModule:GetChildren() do
+                    for _, v in next, OptionList:GetChildren() do
                         if v.Name:match("Option_") then v:Destroy() end
                     end
                     for _, v in next, options do funcs:AddOption(v) end
+                    ResizeOptions()
                 end
 
+                funcs.Refresh = funcs.SetOptions
+                funcs.Update = funcs.SetOptions
+                funcs.SetSelection = function(self, value)
+                    DropdownText.Text = tostring(value or "")
+                    if flag ~= nil then library.flags[flag] = value end
+                end
                 funcs:SetOptions(options)
+                if buildingSettings then
+                    local keys = {UIFontModeDropdown = "FontMode", UIFontColorDropdown = "FontColorMode", UIColorDropdown = "Palette", UIGlowColorDropdown = "GlowColor"}
+                    if keys[flag] then funcs:SetSelection(UI_CONFIG[keys[flag]]) end
+                end
                 
                 RefreshGlobalUI()
                 return funcs
@@ -1807,58 +2215,51 @@ function library.new(library, name, theme)
     ResizeHandle.ZIndex = 100
     ResizeHandle:SetAttribute("BaseTextSize", 18)
 
-    local UIS = game:GetService("UserInputService")
-    local isResizing, dragStart, startSize = false, nil, nil
-
-    ResizeHandle.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            isResizing = true
-            dragStart = input.Position
-            startSize = CloudMain.Size
-            TS:Create(ResizeHandle, TweenInfo.new(0.2), {TextSize = 24 + UI_CONFIG.FontSizeOffset, TextTransparency = 0}):Play()
-        end
+    motion:Connect(ResizeHandle, ResizeHandle.InputBegan, function(input)
+        if input.UserInputType ~= Enum.UserInputType.MouseButton1 and input.UserInputType ~= Enum.UserInputType.Touch then return end
+        local start, size, position = input.Position, CloudMain.Size, WindowLayout.Position
+        local scale = math.max(0.01, uiScale.Scale)
+        motion:Create(ResizeHandle, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {TextTransparency = 0}):Play()
+        motion:BeginPointer(ResizeHandle, input, function(changed)
+            local delta = changed.Position - start
+            local width = math.clamp(size.X.Offset + delta.X / scale, 400, 1000)
+            local height = math.clamp(size.Y.Offset + delta.Y / scale, 250, 700)
+            motion.DesiredWidth, motion.DesiredHeight = width, height
+            assign(CloudMain, "Size", UDim2.new(0, width, 0, height))
+            assign(WindowLayout, "Position", UDim2.new(position.X.Scale, position.X.Offset + (width - size.X.Offset) * scale / 2, position.Y.Scale, position.Y.Offset + (height - size.Y.Offset) * scale / 2))
+            if motion.ClampLayout then motion.ClampLayout() end
+        end, function(released)
+            if ResizeHandle.Parent then motion:Create(ResizeHandle, TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {TextTransparency = 0.4}):Play() end
+            if released then PersistLayout() end
+        end)
     end)
 
-    UIS.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            if isResizing then
-                isResizing = false
-                TS:Create(ResizeHandle, TweenInfo.new(0.3), {TextSize = 18 + UI_CONFIG.FontSizeOffset, TextTransparency = 0.4}):Play()
-                getgenv().CurrentUIWidth = CloudMain.Size.X.Offset
-                getgenv().CurrentUIHeight = CloudMain.Size.Y.Offset
-            end
-        end
-    end)
-
-    UIS.InputChanged:Connect(function(input)
-        if isResizing and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-            local delta = input.Position - dragStart
-            local newWidth = math.clamp(startSize.X.Offset + delta.X, 400, 1000)
-            local newHeight = math.clamp(startSize.Y.Offset + delta.Y, 250, 700)
-            CloudMain.Size = UDim2.new(0, newWidth, 0, newHeight)
-        end
-    end)
-    
     function window:BuildUISettingsTab()
         if self.SettingsTabBuilt then return end 
-        self.SettingsTabBuilt = true 
+        self.SettingsTabBuilt = true
+        buildingSettings = true 
 
         local tab = self:Tab("界面设定", "rbxassetid://6031280882")
+        self.SettingsTabData = tab._UIData
         
         local sec2 = tab:section("全局字体自定义", true)
         
-        sec2:Slider("全局字体大小调整", "UIFontSizeOffset", UI_CONFIG.FontSizeOffset, -4, 10, false, function(v)
+        sec2:Slider("全局字体大小调整", "UIFontSizeOffset", setting("FontSizeOffset"), -4, 10, false, function(v)
+            if buildingSettings then return end
             UI_CONFIG.FontSizeOffset = v
             RefreshGlobalUI()
         end)
         
         sec2:Dropdown("全局字体样式", "UIFontModeDropdown", FontTypeNames, function(v)
+            if buildingSettings then return end
             UI_CONFIG.FontMode = v
             RefreshGlobalUI()
         end)
         
         sec2:Dropdown("全局字体颜色", "UIFontColorDropdown", FontColorNames, function(v)
+            if buildingSettings then return end
             UI_CONFIG.FontColorMode = v
+            motion.BackgroundFontColor = nil
             RefreshGlobalUI()
         end)
 
@@ -1866,9 +2267,11 @@ function library.new(library, name, theme)
 
         local lastSavedScale = UI_CONFIG.Scale
         local scaleSliderFuncs        
-        scaleSliderFuncs = sec:Slider("整体界面缩放 (%)", "UIScaleSlider", math.floor(UI_CONFIG.Scale * 100), 50, 200, false, function(v)
+        scaleSliderFuncs = sec:Slider("整体界面缩放 (%)", "UIScaleSlider", UI_CONFIG.Scale * 100, 50, 200, false, function(v)
+            if buildingSettings then return end
             uiScale.Scale = v / 100
         end, function(v)
+            if buildingSettings then return end
             local currentScale = v / 100
             if currentScale == lastSavedScale then return end
             
@@ -1881,46 +2284,63 @@ function library.new(library, name, theme)
             end)
         end)
         
+        window.SyncScale = function(value)
+            lastSavedScale = value
+            buildingSettings = true
+            scaleSliderFuncs:SetValue(value * 100)
+            buildingSettings = false
+            uiScale.Scale = value
+        end
         sec:Label("提示：UI卡住可按 左Alt + S 键重置大小")
 
-        sec:Toggle("开启随机背景图功能", "UseRandomBGToggle", UI_CONFIG.UseRandomBG, function(v)
+        sec:Toggle("开启随机背景图功能", "UseRandomBGToggle", setting("UseRandomBG"), function(v)
+            if buildingSettings then return end
             UI_CONFIG.UseRandomBG = v
             UpdateBackgroundDisplay()
         end)
 
-        sec:Toggle("开启边框流光", "UIMarqueeToggle", UI_CONFIG.MarqueeEnabled, function(v)
+        sec:Toggle("开启边框流光", "UIMarqueeToggle", setting("MarqueeEnabled"), function(v)
+            if buildingSettings then return end
             UI_CONFIG.MarqueeEnabled = v
+            motion:SyncVisibility()
         end)
         
-        sec:Toggle("启用边缘辉光特效", "UIGlowToggle", UI_CONFIG.GlowEnabled, function(v)
+        sec:Toggle("启用边缘辉光特效", "UIGlowToggle", setting("GlowEnabled"), function(v)
+            if buildingSettings then return end
             UI_CONFIG.GlowEnabled = v
             RefreshGlobalUI()
         end)
 
-        sec:Slider("边缘辉光强度", "UIGlowIntensity", UI_CONFIG.GlowIntensity, 0, 100, false, function(v)
+        sec:Slider("边缘辉光强度", "UIGlowIntensity", setting("GlowIntensity"), 0, 100, false, function(v)
+            if buildingSettings then return end
             UI_CONFIG.GlowIntensity = v
             RefreshGlobalUI()
         end)
 
         sec:Dropdown("更改UI主题与跑马灯颜色", "UIColorDropdown", PaletteNames, function(v)
+            if buildingSettings then return end
             UI_CONFIG.Palette = v
             if Palettes[v] then
                 MainStrokeGradient.Color = Palettes[v]
-            end
-        end)
-        
-        sec:Dropdown("更改边缘辉光颜色", "UIGlowColorDropdown", FontColorNames, function(v)
-            UI_CONFIG.GlowColor = v
-            if UI_CONFIG.GlowEnabled then
                 RefreshGlobalUI()
             end
         end)
         
-        sec:Slider("跑马灯速度", "UIMarqueeSpeed", math.floor(UI_CONFIG.MarqueeSpeed * 10), 1, 50, false, function(v)
+        sec:Dropdown("更改边缘辉光颜色", "UIGlowColorDropdown", FontColorNames, function(v)
+            if buildingSettings then return end
+            UI_CONFIG.GlowColor = v
+            if setting("GlowEnabled") then
+                RefreshGlobalUI()
+            end
+        end)
+        
+        sec:Slider("跑马灯速度", "UIMarqueeSpeed", setting("MarqueeSpeed") * 10, 1, 50, false, function(v)
+            if buildingSettings then return end
             UI_CONFIG.MarqueeSpeed = v / 10
         end)
 
-        sec:Textbox("自定义背景图 (需填Image ID)", "CustomBGImage", UI_CONFIG.BGImage, function(val)
+        sec:Textbox("自定义背景图 (需填Image ID)", "CustomBGImage", setting("BGImage"), function(val)
+            if buildingSettings then return end
             if val == "" or val == "0" then
                 CustomBG.Image = ""
                 UI_CONFIG.BGImage = ""
@@ -1935,7 +2355,8 @@ function library.new(library, name, theme)
             UpdateBackgroundDisplay()
         end)
 
-        sec:Slider("背景不透明度", "CustomBGAlpha", math.floor((1 - (UI_CONFIG.BGTransparency or 0)) * 100), 0, 100, false, function(v)
+        sec:Slider("背景不透明度", "CustomBGAlpha", (1 - (setting("BGTransparency") or 0)) * 100, 0, 100, false, function(v)
+            if buildingSettings then return end
             local trans = 1 - (v / 100)
             if CustomBG then CustomBG.ImageTransparency = trans end
             UI_CONFIG.BGTransparency = trans
@@ -1943,7 +2364,8 @@ function library.new(library, name, theme)
 
         sec:Button("保存当前配置", function()
             ShowConfirm("确认保存并使用当前配置吗？", function()
-                SaveConfig()
+                local success, err = SaveConfig()
+                if not success then library:Notify("保存失败", tostring(err), 4); return end
                 pcall(function()
                     game:GetService("StarterGui"):SetCore("SendNotification", {
                         Title = "UI 设置",
@@ -1966,7 +2388,7 @@ function library.new(library, name, theme)
                 UI_CONFIG.GlowColor = "赛博青蓝"
                 UI_CONFIG.GlowIntensity = 50
                 UI_CONFIG.FontMode = "Gotham Bold (加粗)"
-                UI_CONFIG.FontColorMode = "默认深色"
+                UI_CONFIG.FontColorMode = UI_DEFAULTS.FontColorMode
                 UI_CONFIG.FontSizeOffset = 0
                 UI_CONFIG.UseRandomBG = true
                 
@@ -1979,14 +2401,18 @@ function library.new(library, name, theme)
                 CustomBG.Image = ""
                 CustomBG.ImageTransparency = 0
                 
+                motion.DesiredWidth, motion.DesiredHeight = 482, 369
+                WindowLayout.Position = UDim2.new()
+                CloudMain.Size = UDim2.new(0, 482, 0, 369)
                 UpdateBackgroundDisplay()
                 RefreshGlobalUI()
-                
-                if isfile and isfile(ConfigPath) and delfile then
-                    pcall(function() delfile(ConfigPath) end)
-                else
-                    SaveConfig() 
-                end
+                local previousTab = self.SettingsTabData
+                local wasCurrent = library.currentTab == previousTab
+                if wasCurrent then library.currentTab = nil end
+                if previousTab then previousTab[1]:Destroy(); previousTab[2]:Destroy() end
+                self.SettingsTabBuilt = false
+                self:BuildUISettingsTab()
+                SaveConfig()
 
                 pcall(function()
                     game:GetService("StarterGui"):SetCore("SendNotification", {
@@ -1997,9 +2423,10 @@ function library.new(library, name, theme)
                 end)
             end)
         end)
+        buildingSettings = false
     end
 
-    task.defer(function()
+    motion:Spawn(dogent, function()
         window:BuildUISettingsTab()
         UpdateBackgroundDisplay()
         RefreshGlobalUI()
