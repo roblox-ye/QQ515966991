@@ -170,7 +170,328 @@ function Tween(obj, t, data)
     return true
 end
 
+-- Controls only: no window geometry, palette or configuration changes.
+local AnimationOnly = {}
+AnimationOnly.Owners = setmetatable({}, {__mode = "k"})
+
+function AnimationOnly.For(obj)
+    local current = obj
+    while current do
+        local owner = AnimationOnly.Owners[current]
+        if owner then return owner end
+        current = current.Parent
+    end
+end
+
+function AnimationOnly.New(root, main, getConfig)
+    local self = setmetatable({root = root, main = main, config = getConfig, objects = {}, pending = {},
+        connections = {}, slots = {}, records = {}, feedback = {}, ripples = {}, dropdowns = {},
+        ThemePasses = 0, PropertyWrites = 0, dead = false}, {__index = AnimationOnly})
+    AnimationOnly.Owners[root] = self
+    local function add(obj)
+        if obj.Name ~= "Ripple" and obj:IsA("GuiObject") then
+            self.objects[obj] = true
+            self.pending[obj] = true
+            if self.apply then self:Refresh(self.nextState, self.apply) end
+        end
+    end
+    for _, obj in ipairs(root:GetDescendants()) do add(obj) end
+    self:Connect(root.DescendantAdded, add)
+    self:Connect(root.DescendantRemoving, function(obj) self:Remove(obj) end)
+    self:Connect(root.Destroying, function() self:Destroy() end)
+    return self
+end
+
+function AnimationOnly:Connect(signal, callback)
+    local conn = signal:Connect(callback)
+    self.connections[conn] = true
+    return conn
+end
+
+function AnimationOnly:Disconnect(conn)
+    if conn then self.connections[conn] = nil; conn:Disconnect() end
+end
+
+function AnimationOnly:Set(obj, property, value)
+    if obj[property] ~= value then
+        obj[property] = value
+        self.PropertyWrites = self.PropertyWrites + 1
+    end
+end
+
+function AnimationOnly:Cancel(record)
+    if not record or not self.records[record] then return end
+    self.records[record] = nil
+    self:Disconnect(record.connection)
+    local slots = self.slots[record.object]
+    if slots then
+        for property in pairs(record.goals) do
+            if slots[property] == record then slots[property] = nil end
+        end
+        if not next(slots) then self.slots[record.object] = nil end
+    end
+    record.tween:Cancel()
+end
+
+function AnimationOnly:Create(obj, info, goals, onDone)
+    local slots = self.slots[obj]
+    if slots then
+        for property in pairs(goals) do self:Cancel(slots[property]) end
+    end
+    slots = self.slots[obj] or {}
+    self.slots[obj] = slots
+    local tween = TweenService:Create(obj, info, goals)
+    local record = {object = obj, goals = goals, tween = tween}
+    self.records[record] = true
+    for property in pairs(goals) do slots[property] = record end
+    record.connection = self:Connect(tween.Completed, function()
+        if not self.records[record] then return end
+        self.records[record] = nil
+        self:Disconnect(record.connection)
+        for property in pairs(goals) do
+            if slots[property] == record then slots[property] = nil end
+        end
+        if not next(slots) then self.slots[obj] = nil end
+        if not self.dead and onDone then onDone() end
+    end)
+    return tween
+end
+
+function AnimationOnly:Tween(obj, duration, goals, onDone)
+    if self.dead or not obj.Parent then return end
+    local tween = self:Create(obj, TweenInfo.new(duration, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), goals, onDone)
+    tween:Play()
+    return tween
+end
+
+function AnimationOnly:Feedback(obj)
+    if self.feedback[obj] or not (obj:IsA("TextButton") or obj:IsA("ImageButton") or obj:IsA("TextBox")) then return end
+    -- Open and Close retain their original interaction and window animations.
+    if obj.Name == "Open" or obj.Name == "CloseBtn" or obj.Name == "ResizeHandle" then return end
+    local state = {base = obj.BackgroundTransparency, hover = false, pressed = false, connections = {}}
+    self.feedback[obj] = state
+    local function bind(signal, callback)
+        table.insert(state.connections, self:Connect(signal, callback))
+    end
+    local function paint()
+        if self.dead or not obj.Parent then return end
+        local delta = state.pressed and 0.12 or (state.hover and 0.05 or 0)
+        local base = state.base
+        local alpha = base == 1 and 1 or math.clamp(base - delta, 0, 1)
+        if base ~= 1 then
+            self:Tween(obj, state.pressed and 0.08 or 0.16, {BackgroundTransparency = alpha})
+        elseif obj.Text ~= nil and obj.Text ~= "" then
+            if state.textBase == nil then state.textBase = obj.TextTransparency end
+            self:Tween(obj, state.pressed and 0.08 or 0.16, {TextTransparency = math.clamp(state.textBase + delta, 0, 1)})
+        end
+        local stroke = obj:FindFirstChildOfClass("UIStroke")
+        if stroke then
+            if state.strokeBase == nil then state.strokeBase = stroke.Transparency end
+            self:Tween(stroke, 0.16, {Transparency = math.clamp(state.strokeBase - delta, 0, 1)})
+        end
+    end
+    state.paint = paint
+    bind(obj.MouseEnter, function() state.hover = true; paint() end)
+    bind(obj.MouseLeave, function() state.hover = false; state.pressed = false; paint() end)
+    if obj:IsA("TextBox") then
+        bind(obj.Focused, function() state.pressed = true; paint() end)
+        bind(obj.FocusLost, function() state.pressed = false; paint() end)
+    else
+        local function release()
+            self:Disconnect(state.release)
+            state.release = nil
+            state.pressed = false
+            paint()
+        end
+        local function press()
+            state.pressed = true
+            paint()
+            if not state.release then
+                state.release = self:Connect(UserInputService.InputEnded, function(input)
+                    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then release() end
+                end)
+            end
+        end
+        bind(obj.MouseButton1Down, press)
+        bind(obj.MouseButton1Up, release)
+        bind(obj.InputBegan, function(input) if input.UserInputType == Enum.UserInputType.Touch then press() end end)
+        bind(obj.InputEnded, function(input) if input.UserInputType == Enum.UserInputType.Touch then release() end end)
+    end
+end
+
+function AnimationOnly:ControlAlpha(obj, base)
+    local state = self.feedback[obj]
+    if state then
+        state.base = base
+        local delta = state.pressed and 0.12 or (state.hover and 0.05 or 0)
+        self:Set(obj, "BackgroundTransparency", math.clamp(base - delta, 0, 1))
+    else
+        self:Set(obj, "BackgroundTransparency", base)
+    end
+end
+
+function AnimationOnly:Refresh(state, apply)
+    if self.dead then return end
+    self.nextState, self.apply = state, apply
+    if self.themeTask then return end
+    self.themeTask = task.defer(function()
+        self.themeTask = nil
+        if self.dead then return end
+        local current = self.nextState
+        local full = self.lastState == nil
+        if not full then
+            for key, value in pairs(current) do if self.lastState[key] ~= value then full = true; break end end
+        end
+        local batch = full and self.objects or self.pending
+        self.pending = {}
+        self.lastState = current
+        if next(batch) then
+            self.ThemePasses = self.ThemePasses + 1
+            for obj in pairs(batch) do
+                if obj.Parent and self.objects[obj] then
+                    self:Feedback(obj)
+                    self.apply(obj)
+                end
+            end
+        end
+    end)
+end
+
+function AnimationOnly:StartFrame(gradient, stats)
+    self.gradient, self.stats = gradient, stats
+    local function sync()
+        local visible = not self.dead and self.main.Visible and self.root.Enabled ~= false
+        if visible and not self.frame then
+            self.frames, self.lastTime = 0, os.clock()
+            self.frame = self:Connect(RunService.RenderStepped, function()
+                self.frames = self.frames + 1
+                local config = self.config()
+                self:Set(gradient, "Rotation", config.MarqueeEnabled and ((os.clock() * config.MarqueeSpeed * 60) % 360) or 45)
+                local now = os.clock()
+                if now - self.lastTime >= 1 then
+                    local fps = math.floor(self.frames / (now - self.lastTime))
+                    self.frames, self.lastTime = 0, now
+                    local ping = "0"
+                    pcall(function() ping = tostring(math.floor(game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue())) end)
+                    self:Set(stats, "Text", string.format("FPS: %d\nPing: %sms\n时间: %s", fps, ping, os.date("%H:%M:%S")))
+                end
+            end)
+        elseif not visible and self.frame then
+            self:Disconnect(self.frame)
+            self.frame = nil
+        end
+    end
+    self:Connect(self.main:GetPropertyChangedSignal("Visible"), sync)
+    self:Connect(self.root:GetPropertyChangedSignal("Enabled"), sync)
+    sync()
+end
+
+function AnimationOnly:Ripple(obj)
+    if self.dead or not obj.Parent then return end
+    if self.ripples[obj] then self.ripples[obj]:Destroy() end
+    obj.ClipsDescendants = true
+    local ripple = Instance.new("Frame")
+    ripple.Name = "Ripple"
+    ripple.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    ripple.BackgroundTransparency = 0.4
+    ripple.BorderSizePixel = 0
+    ripple.ZIndex = 8
+    ripple.Parent = obj
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(1, 0)
+    corner.Parent = ripple
+    local size = math.max(obj.AbsoluteSize.X, obj.AbsoluteSize.Y) * 1.5
+    local x, y = mouse.X - obj.AbsolutePosition.X, mouse.Y - obj.AbsolutePosition.Y
+    ripple.Size = UDim2.new(0, 0, 0, 0)
+    ripple.Position = UDim2.new(0, x, 0, y)
+    self.ripples[obj] = ripple
+    self:Tween(ripple, 0.4, {Size = UDim2.new(0, size, 0, size), Position = UDim2.new(0, x - size / 2, 0, y - size / 2), BackgroundTransparency = 1}, function()
+        if self.ripples[obj] == ripple then self.ripples[obj] = nil end
+        ripple:Destroy()
+    end)
+end
+
+local function dropdownHeight(module)
+    local height, count = 0, 0
+    for _, child in ipairs(module:GetChildren()) do
+        if child:IsA("GuiObject") and child.Visible then height = height + child.Size.Y.Offset; count = count + 1 end
+    end
+    return math.max(30, height + math.max(0, count - 1) * 6)
+end
+
+function AnimationOnly:BeginDropdown(module)
+    local state = self.dropdowns[module]
+    if not state then state = {size = module.Size, automatic = module.AutomaticSize}; self.dropdowns[module] = state end
+    local height = module.AutomaticSize == Enum.AutomaticSize.None and module.Size.Y.Offset or dropdownHeight(module)
+    local slots = self.slots[module]
+    if slots then self:Cancel(slots.Size) end
+    module.AutomaticSize = Enum.AutomaticSize.None
+    module.Size = UDim2.new(state.size.X.Scale, state.size.X.Offset, 0, height)
+end
+
+function AnimationOnly:EndDropdown(module, icon, open)
+    local state = self.dropdowns[module]
+    self:Tween(module, 0.22, {Size = UDim2.new(state.size.X.Scale, state.size.X.Offset, 0, dropdownHeight(module))}, function()
+        module.Size = state.size
+        module.AutomaticSize = state.automatic
+    end)
+    self:Tween(icon, 0.18, {Rotation = open and 180 or 0})
+    if open then
+        for _, child in ipairs(module:GetChildren()) do
+            if child:IsA("TextButton") and child.Name:match("^Option_") and child.Visible then
+                local target = child.TextTransparency
+                local slots = self.slots[child]
+                if slots and slots.TextTransparency then target = slots.TextTransparency.goals.TextTransparency end
+                child.TextTransparency = math.min(1, target + 0.6)
+                self:Tween(child, 0.18, {TextTransparency = target})
+            end
+        end
+    end
+end
+
+function AnimationOnly:Remove(obj)
+    self.objects[obj], self.pending[obj], self.dropdowns[obj] = nil, nil, nil
+    local state = self.feedback[obj]
+    if state then
+        for _, conn in ipairs(state.connections) do self:Disconnect(conn) end
+        self:Disconnect(state.release)
+        self.feedback[obj] = nil
+    end
+    local slots = self.slots[obj]
+    if slots then
+        local records = {}
+        for _, record in pairs(slots) do records[record] = true end
+        for record in pairs(records) do self:Cancel(record) end
+    end
+    self.ripples[obj] = nil
+end
+
+function AnimationOnly:Destroy()
+    if self.dead then return end
+    self.dead = true
+    if self.themeTask then pcall(task.cancel, self.themeTask); self.themeTask = nil end
+    local records = {}
+    for record in pairs(self.records) do table.insert(records, record) end
+    for _, record in ipairs(records) do self:Cancel(record) end
+    for conn in pairs(self.connections) do conn:Disconnect() end
+    table.clear(self.connections)
+    table.clear(self.objects); table.clear(self.pending); table.clear(self.feedback)
+    table.clear(self.dropdowns); table.clear(self.ripples)
+    self.frame = nil
+    AnimationOnly.Owners[self.root] = nil
+end
+
+function AnimationOnly:GetStats()
+    local connections, tweens = 0, 0
+    for _ in pairs(self.connections) do connections = connections + 1 end
+    for _ in pairs(self.records) do tweens = tweens + 1 end
+    return {ThemePasses = self.ThemePasses, PropertyWrites = self.PropertyWrites,
+        Connections = connections, ActiveTweens = tweens, FrameConnected = self.frame ~= nil}
+end
+
 function Ripple(obj)
+    local owner = AnimationOnly.For(obj)
+    if owner then owner:Ripple(obj); return end
     spawn(function()
         if obj.ClipsDescendants ~= true then
             obj.ClipsDescendants = true
@@ -630,14 +951,7 @@ function library.new(library, name, theme)
     MainStrokeGradient.Rotation = 45
     MainStrokeGradient.Parent = MainStroke
     
-    local marqueeConn = RunService.RenderStepped:Connect(function()
-        if UI_CONFIG.MarqueeEnabled then
-            local rot = (os.clock() * UI_CONFIG.MarqueeSpeed * 60) % 360
-            MainStrokeGradient.Rotation = rot
-        else
-            MainStrokeGradient.Rotation = 45
-        end
-    end)
+    local motion = AnimationOnly.New(dogent, CloudMain, function() return UI_CONFIG end)
 
     local function toggleui()
         if not _G.activeUITweens then _G.activeUITweens = {} end
@@ -828,36 +1142,7 @@ function library.new(library, name, theme)
     StatsText.TextYAlignment = Enum.TextYAlignment.Center
     StatsText:SetAttribute("BaseTextSize", 10)
 
-    task.spawn(function()
-        local lastTime = os.clock()
-        local frames = 0
-        
-        local rsConn = RunService.RenderStepped:Connect(function()
-            frames = frames + 1
-        end)
-
-        while task.wait(1) do
-            if not StatsText or not StatsText.Parent then
-                rsConn:Disconnect()
-                break
-            end
-
-            local currentTime = os.clock()
-            local dt = currentTime - lastTime
-            local fps = math.floor(frames / dt)
-            frames = 0
-            lastTime = currentTime
-            
-            local ping = "0"
-            pcall(function()
-                local pingVal = game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue()
-                ping = tostring(math.floor(pingVal))
-            end)
-            
-            local timeStr = os.date("%H:%M:%S")
-            StatsText.Text = string.format("FPS: %d\nPing: %sms\n时间: %s", fps, ping, timeStr)
-        end
-    end)
+    motion:StartFrame(MainStrokeGradient, StatsText)
 
     SBG.Color = ColorSequence.new {ColorSequenceKeypoint.new(0.00, zyColor), ColorSequenceKeypoint.new(1.00, zyColor)}
     SBG.Rotation = 90
@@ -911,9 +1196,9 @@ function library.new(library, name, theme)
             titleStrokeAlpha = 0.5
         end
 
-        for _, obj in ipairs(dogent:GetDescendants()) do
+        motion:Refresh({selectedFont, selectedColor, sizeOffset, strokeAlpha, titleStrokeAlpha, strokeColor, interfaceTransparency}, function(obj)
             if obj:GetAttribute("IsControlBG") then
-                obj.BackgroundTransparency = interfaceTransparency
+                motion:ControlAlpha(obj, interfaceTransparency)
             end
             
             if obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
@@ -922,51 +1207,52 @@ function library.new(library, name, theme)
                 end
                 
                 if obj.Name == "Open" or obj.Name == "ScriptTitle" then
-                    obj.TextColor3 = Color3.fromRGB(30, 30, 30)
-                    obj.Font = selectedFont
-                    obj.TextSize = obj:GetAttribute("BaseTextSize") + sizeOffset
-                    obj.TextStrokeTransparency = titleStrokeAlpha
-                    obj.TextStrokeColor3 = Color3.fromRGB(255, 255, 255)
+                    motion:Set(obj, "TextColor3", Color3.fromRGB(30, 30, 30))
+                    motion:Set(obj, "Font", selectedFont)
+                    motion:Set(obj, "TextSize", obj:GetAttribute("BaseTextSize") + sizeOffset)
+                    motion:Set(obj, "TextStrokeTransparency", titleStrokeAlpha)
+                    motion:Set(obj, "TextStrokeColor3", Color3.fromRGB(255, 255, 255))
                 elseif obj.Name ~= "Icon" and obj.Name ~= "Avatar" and obj.Name ~= "Crown" and obj.Name ~= "StatsText" then
-                    obj.Font = selectedFont
-                    obj.TextColor3 = selectedColor
+                    motion:Set(obj, "Font", selectedFont)
+                    motion:Set(obj, "TextColor3", selectedColor)
                     if obj:IsA("TextBox") then
-                        obj.PlaceholderColor3 = selectedColor
+                        motion:Set(obj, "PlaceholderColor3", selectedColor)
                     end
-                    obj.TextSize = obj:GetAttribute("BaseTextSize") + sizeOffset
-                    obj.TextStrokeTransparency = strokeAlpha
-                    obj.TextStrokeColor3 = strokeColor
+                    motion:Set(obj, "TextSize", obj:GetAttribute("BaseTextSize") + sizeOffset)
+                    motion:Set(obj, "TextStrokeTransparency", strokeAlpha)
+                    motion:Set(obj, "TextStrokeColor3", strokeColor)
                 elseif obj.Name == "StatsText" then
-                    obj.TextColor3 = selectedColor
-                    obj.TextSize = obj:GetAttribute("BaseTextSize") + sizeOffset
-                    obj.TextStrokeTransparency = strokeAlpha
-                    obj.TextStrokeColor3 = strokeColor
+                    motion:Set(obj, "TextColor3", selectedColor)
+                    motion:Set(obj, "TextSize", obj:GetAttribute("BaseTextSize") + sizeOffset)
+                    motion:Set(obj, "TextStrokeTransparency", strokeAlpha)
+                    motion:Set(obj, "TextStrokeColor3", strokeColor)
                 end
                 
                 if obj.Name == "TopLine" then
                     if obj:IsA("Frame") then
-                        obj.BackgroundColor3 = selectedColor
+                        motion:Set(obj, "BackgroundColor3", selectedColor)
                     end
                 end
             end
-        end
+        end)
 
         if UI_CONFIG.GlowEnabled then
             local gColor = FontColorPresets[UI_CONFIG.GlowColor] or Color3.fromRGB(0,255,255)
-            DropShadow.ImageColor3 = gColor
+            motion:Set(DropShadow, "ImageColor3", gColor)
             local intensity = UI_CONFIG.GlowIntensity or 50
             local glowAlpha = math.clamp(1 - (intensity / 100), 0, 1)
-            DropShadow.ImageTransparency = glowAlpha
+            motion:Set(DropShadow, "ImageTransparency", glowAlpha)
             local shadowScale = 43 + (intensity * 0.3)
-            DropShadow.Size = UDim2.new(1, shadowScale, 1, shadowScale)
+            motion:Set(DropShadow, "Size", UDim2.new(1, shadowScale, 1, shadowScale))
         else
-            DropShadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
-            DropShadow.ImageTransparency = 0.7
-            DropShadow.Size = UDim2.new(1, 43, 1, 43)
+            motion:Set(DropShadow, "ImageColor3", Color3.fromRGB(0, 0, 0))
+            motion:Set(DropShadow, "ImageTransparency", 0.7)
+            motion:Set(DropShadow, "Size", UDim2.new(1, 43, 1, 43))
         end
     end
 
     local window = {}
+    function window:GetUIStats() return motion:GetStats() end
     function window.Tab(window, tabName, icon)
         local Tab = Instance.new("ScrollingFrame")
         local TabIco = Instance.new("Frame")
@@ -1131,8 +1417,8 @@ function library.new(library, name, theme)
                 SetOpen = function(state)
                     open = state
                     Objs.Visible = open
-                    TS:Create(SectionOpened, TweenInfo.new(0.2), {TextTransparency = (open and 0 or 1)}):Play()
-                    TS:Create(SectionOpen, TweenInfo.new(0.2), {TextTransparency = (open and 1 or 0)}):Play()
+                    motion:Create(SectionOpened, TweenInfo.new(0.2), {TextTransparency = (open and 0 or 1)}):Play()
+                    motion:Create(SectionOpen, TweenInfo.new(0.2), {TextTransparency = (open and 1 or 0)}):Play()
                 end
             }
 
@@ -1281,8 +1567,8 @@ function library.new(library, name, theme)
                         if state == nil then state = not library.flags[flag] end
                         if library.flags[flag] == state then return end
                         
-                        TS:Create(ToggleSwitch, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Position = UDim2.new(0, (state and 18 or 2), 0.5, 0)}):Play()
-                        TS:Create(ToggleDisable, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {BackgroundColor3 = (state and Color3.fromRGB(0, 122, 255) or beijingColor)}):Play()
+                        motion:Create(ToggleSwitch, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Position = UDim2.new(0, (state and 18 or 2), 0.5, 0)}):Play()
+                        motion:Create(ToggleDisable, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {BackgroundColor3 = (state and Color3.fromRGB(0, 122, 255) or beijingColor)}):Play()
                         
                         library.flags[flag] = state
                         callback(state)
@@ -1452,14 +1738,14 @@ function library.new(library, name, theme)
                 TextBox:SetAttribute("BaseTextSize", 12)
 
                 TextBox.Focused:Connect(function()
-                    TS:Create(BoxStroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(0, 122, 255), Transparency = 0}):Play()
+                    motion:Create(BoxStroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(0, 122, 255), Transparency = 0}):Play()
                 end)
 
                 TextBox.FocusLost:Connect(function()
                     if TextBox.Text == "" then TextBox.Text = default end
                     library.flags[flag] = TextBox.Text
                     callback(TextBox.Text)
-                    TS:Create(BoxStroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(180, 180, 180), Transparency = 0}):Play()
+                    motion:Create(BoxStroke, TweenInfo.new(0.2), {Color = Color3.fromRGB(180, 180, 180), Transparency = 0}):Play()
                 end)
 
                 TextBox:GetPropertyChangedSignal("TextBounds"):Connect(function()
@@ -1579,6 +1865,7 @@ function library.new(library, name, theme)
 
                 local funcs = {
                     SetValue = function(self, value)
+                        local animate = value ~= nil
                         local percent = (mouse.X - SliderBar.AbsolutePosition.X) / SliderBar.AbsoluteSize.X
                         if value then percent = (value - min) / (max - min) end
                         percent = math.clamp(percent, 0, 1)
@@ -1589,7 +1876,13 @@ function library.new(library, name, theme)
                         end
                         library.flags[flag] = tonumber(value)
                         SliderValue.Text = tostring(value)
-                        SliderPart.Size = UDim2.new(percent, 0, 1, 0)
+                        if animate then
+                            motion:Tween(SliderPart, 0.12, {Size = UDim2.new(percent, 0, 1, 0)})
+                        else
+                            local slots = motion.slots[SliderPart]
+                            if slots then motion:Cancel(slots.Size) end
+                            SliderPart.Size = UDim2.new(percent, 0, 1, 0)
+                        end
                         callback(tonumber(value))
                     end
                 }
@@ -1727,6 +2020,7 @@ function library.new(library, name, theme)
 
                 local open = false
                 local function ToggleDropVis()
+                    motion:BeginDropdown(DropdownModule)
                     open = not open
                     if open then 
                         setAllVisible() 
@@ -1738,6 +2032,7 @@ function library.new(library, name, theme)
                         end
                     end
                     DropdownOpen.Text = (open and "-" or "+")
+                    motion:EndDropdown(DropdownModule, DropdownOpen, open)
                 end
 
                 DropdownOpen.MouseButton1Click:Connect(ToggleDropVis)
